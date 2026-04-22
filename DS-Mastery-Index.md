@@ -199,7 +199,7 @@
 
 | Module | Status |
 |--------|--------|
-| Module 1 — Theory & Memory Internals | Not Started |
+| Module 1 — Theory & Memory Internals | In Progress |
 | Module 2 — Access, Mutation & Time Complexity | Not Started |
 | Module 3 — Power Idioms & Collections | Not Started |
 | Module 4 — Mastery Exercises | Not Started |
