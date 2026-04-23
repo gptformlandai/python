@@ -318,16 +318,363 @@ List = dynamic array. End good, front bad.
 ---
 
 ### Topic 3: Tuples - Internals
-Status: Not Started
+Status: In Progress
 
-Notes: Pending.
+#### Concept in One Line
+A tuple is a fixed-size, immutable sequence of object references: lightweight, stable, and safe to hash when all its elements are hashable.
+
+#### Mental Model
+Think of a tuple as a sealed container with numbered slots. You can read what is inside each slot, but you cannot add, remove, or replace slots after creation.
+
+#### Memory Behavior
+- CPython tuples store references to objects, just like lists do.
+- Unlike lists, tuples do not keep extra spare capacity for future growth because their size never changes.
+- That fixed-size layout usually gives tuples a smaller memory footprint than lists with the same elements.
+- Immutability lets Python safely reuse tuple constants created from only compile-time constants.
+- This is why literal tuples like `(1, 2, 3)` can be constant-folded by the compiler, while lists are normally built at runtime.
+- `sys.getsizeof()` shows the tuple container size, not the deep memory of objects stored inside it.
+
+#### Key Behaviors and Gotchas
+- Tuples are immutable, so `t[0] = 10` raises `TypeError`.
+- A tuple can still contain mutable objects, and those nested objects can change.
+- A tuple is hashable only if every element inside it is hashable.
+- That makes tuples useful as dictionary keys, set members, and cache keys.
+- Parentheses alone do not make a tuple; the comma does. Example: `(5)` is an `int`, but `(5,)` is a one-item tuple.
+- Multiple assignment and multiple return values use tuple packing and unpacking.
+
+#### Time Complexity Notes
+- Index access: O(1)
+- Iteration: O(n)
+- Membership test (`x in tup`): O(n)
+- Slicing: O(k)
+- Tuple creation from `n` items: O(n)
+- Hashing: O(n) in the number of elements because Python combines the hashes of the contained values
+
+#### Examples
+Example 1: Tuple usually uses less memory than list for the same items
+
+```python
+import sys
+
+numbers_list = [1, 2, 3, 4, 5]
+numbers_tuple = (1, 2, 3, 4, 5)
+
+print(sys.getsizeof(numbers_list))
+print(sys.getsizeof(numbers_tuple))
+```
+
+What to notice:
+- The tuple container is usually smaller.
+- The saved space comes from fixed size and no over-allocation for growth.
+
+Example 2: Swap without a temporary variable
+
+```python
+a = 10
+b = 20
+
+a, b = b, a
+
+print(a, b)  # 20 10
+```
+
+What to notice:
+- Python packs values on the right-hand side and unpacks them on the left.
+- This is one of the most common tuple-powered patterns in Python code.
+
+Example 3: Return multiple values
+
+```python
+def min_and_max(values):
+    return min(values), max(values)
+
+low, high = min_and_max([8, 3, 11, 5])
+print(low, high)  # 3 11
+```
+
+What to notice:
+- The function returns one tuple object.
+- Unpacking makes the call site clean and readable.
+
+Example 4: Tuple as a dictionary key
+
+```python
+locations = {
+    ("ap-south-1", "primary"): "Mumbai",
+    ("us-east-1", "primary"): "N. Virginia",
+}
+
+print(locations[("ap-south-1", "primary")])  # Mumbai
+```
+
+What to notice:
+- Tuples work well when the key is naturally a combination of fields.
+- This only works because the tuple elements are hashable strings.
+
+Example 5: Immutability is shallow, not deep
+
+```python
+record = ([1, 2], "active")
+record[0].append(3)
+
+print(record)  # ([1, 2, 3], 'active')
+```
+
+What to notice:
+- The tuple did not change shape.
+- But the mutable list inside the tuple changed successfully.
+
+Example 6: Constant folding with tuple literals
+
+```python
+import dis
+
+def use_tuple():
+    return (1, 2, 3)
+
+def use_list():
+    return [1, 2, 3]
+
+dis.dis(use_tuple)
+print(use_tuple.__code__.co_consts)
+dis.dis(use_list)
+```
+
+What to notice:
+- The tuple literal appears in the function constants.
+- The list literal is built at runtime because lists are mutable.
+
+#### Common Patterns
+- Use tuples for fixed records such as coordinates, RGB values, and `(host, port)` pairs.
+- Use tuple unpacking to return multiple values cleanly from a function.
+- Use tuples as dictionary keys when the lookup key is composite.
+- Use tuples for read-only configuration values that should not be modified accidentally.
+- Prefer tuples over lists when the sequence is stable and memory sensitivity matters.
+
+#### Pitfalls to Avoid
+- Assuming a tuple is deeply immutable even when it contains lists, dicts, or sets.
+- Forgetting the trailing comma in a single-element tuple.
+- Using a tuple as a dictionary key when one of its elements is unhashable.
+- Choosing a tuple when you actually need frequent appends or deletes.
+- Overstating constant folding: only tuples made from compile-time constants can be folded safely.
+
+#### Quick Recap
+- Tuples are fixed-size immutable sequences.
+- They are usually smaller than lists because they do not over-allocate for growth.
+- Their immutability enables safe hashing and compiler optimizations like constant folding for literal constants.
+- Packing and unpacking make swaps and multi-value returns natural.
+- Tuple immutability is shallow, so nested mutable objects can still change.
+
+#### Interview Sound Bite
+A tuple is Python's lightweight immutable sequence, so I use it for fixed data, composite keys, and function returns when I want lower overhead and hashability compared with a list.
+
+#### Memory Hook
+Tuple = sealed list. Fixed shape, smaller shell, safer key.
+
+#### Practice Questions
+1. Why does a tuple usually take less memory than a list with the same elements?
+2. Why can a tuple be used as a dictionary key but a list cannot?
+3. What is the difference between `(5)` and `(5,)`?
+4. How does Python return multiple values from a function?
+5. Why can Python constant-fold tuple literals more safely than list literals?
+
+#### Practice Answers
+1. A tuple usually takes less memory because it has a fixed size and does not reserve extra capacity for future growth like a list does.
+2. A tuple can be used as a dictionary key when all of its elements are hashable, because its immutable structure makes its hash stable. A list is mutable, so it is unhashable.
+3. `(5)` is just the integer `5`, while `(5,)` is a one-element tuple. The comma is what creates the tuple.
+4. Python returns multiple values by packing them into a tuple and then optionally unpacking that tuple at the call site.
+5. Python can constant-fold tuple literals made only from constants because they cannot be mutated later, while list literals are mutable and must usually be created fresh at runtime.
 
 ---
 
 ### Topic 4: Strings
-Status: Not Started
+Status: In Progress
 
-Notes: Pending.
+#### Concept in One Line
+A Python string is an immutable sequence of Unicode text, so it is safe to share and hash, but repeated rebuilding creates new objects and gets expensive.
+
+#### Mental Model
+Think of a string as printed text on paper. You can read it, slice it, or compare it, but you cannot erase one character in place. Any "change" means creating a new piece of paper with the updated text.
+
+#### Memory Behavior
+- Python 3 `str` stores Unicode text, not raw bytes.
+- `bytes` is a separate type used for encoded binary data such as UTF-8 bytes from a file or network.
+- CPython uses a flexible internal Unicode representation, so ASCII-only strings can be stored more compactly than strings containing wider Unicode characters.
+- Because strings are immutable, Python can cache their hash and safely use them as dictionary keys and set members.
+- CPython may intern some strings, meaning equal strings can share one object in memory, especially for literals and identifier-like values.
+- Operations such as concatenation and slicing generally create new string objects because the original string cannot change in place.
+
+#### Key Behaviors and Gotchas
+- Strings are immutable, so `s[0] = "P"` raises `TypeError`.
+- `+` and `+=` create new strings rather than modifying the old one.
+- Repeated string building in a loop is a common anti-pattern because each step copies data again.
+- `"".join(parts)` is the preferred idiom when combining many pieces into one string.
+- Use `==` for value comparison, not `is`; interning can make `is` appear to work sometimes, but it is not reliable.
+- Indexing returns a one-character string, not a separate `char` type.
+- `len(s)` counts Unicode code points, not encoded bytes and not always what a human would perceive as visual characters.
+
+#### Time Complexity Notes
+- `len(s)`: O(1)
+- Index access: O(1)
+- Slice of length `k`: O(k)
+- Concatenation `a + b`: O(len(a) + len(b))
+- `"".join(parts)`: O(total output length)
+- Character membership (`ch in s`): O(n)
+- Repeated `+=` over many pieces: often O(n^2) total work because earlier content gets copied repeatedly
+
+#### Examples
+Example 1: Immutability means "updates" create a new string
+
+```python
+word = "py"
+alias = word
+word += "thon"
+
+print(alias)  # py
+print(word)   # python
+```
+
+What to notice:
+- The original string did not change in place.
+- `word += "thon"` created a new string object and rebound `word`.
+
+Example 2: String building anti-pattern
+
+```python
+parts = ["sys", "tem", "de", "sign"]
+
+result = ""
+for part in parts:
+    result += part
+
+print(result)  # systemdesign
+```
+
+What to notice:
+- This works, but every loop step creates another string.
+- For many pieces, the repeated copying becomes wasteful.
+
+Example 3: `join` idiom
+
+```python
+parts = ["sys", "tem", "de", "sign"]
+result = "".join(parts)
+
+print(result)  # systemdesign
+```
+
+What to notice:
+- `join` is the standard way to build one string from many pieces.
+- It avoids the repeated rebuild pattern from `+=` in a loop.
+
+Example 4: Interning with `sys.intern()`
+
+```python
+import sys
+
+a = "".join(["data", "_", "pipeline"])
+b = "".join(["data", "_", "pipeline"])
+
+print(a == b)  # True
+print(a is b)  # usually False
+
+a = sys.intern(a)
+b = sys.intern(b)
+
+print(a is b)  # True
+```
+
+What to notice:
+- Equal strings can be forced to share one canonical object with `sys.intern()`.
+- This is an optimization technique, not a replacement for `==`.
+
+Example 5: Unicode model: code points are not the same as bytes
+
+```python
+text = "A😊"
+
+print(len(text))                 # 2
+print(text.encode("utf-8"))      # b'A...'
+print(len(text.encode("utf-8"))) # 5
+```
+
+What to notice:
+- The string has two Unicode characters.
+- Its UTF-8 encoded byte representation uses more than two bytes.
+
+Example 6: Visually similar text can have different internal forms
+
+```python
+composed = "é"
+decomposed = "e\u0301"
+
+print(len(composed))    # 1
+print(len(decomposed))  # 2
+print(composed == decomposed)  # False
+```
+
+What to notice:
+- Both values may look similar when printed.
+- Unicode text can have multiple representations, which matters in comparison and normalization.
+
+Example 7: Slicing tricks
+
+```python
+s = "abcdef"
+
+print(s[:3])   # abc
+print(s[3:])   # def
+print(s[-3:])  # def
+print(s[::2])  # ace
+print(s[::-1]) # fedcba
+```
+
+What to notice:
+- Slicing is concise for prefix, suffix, stride, and reverse operations.
+- Each slice produces a new string value.
+
+#### Common Patterns
+- Use strings for text data and `bytes` for encoded or binary data.
+- Build large strings by collecting pieces in a list and calling `"".join(...)`.
+- Use f-strings for readable formatting when combining a small number of values.
+- Use strings naturally as dictionary keys because they are immutable and hashable.
+- Use slicing for fast prefix, suffix, and reverse-style operations on simple text.
+- Use `sys.intern()` only in specialized cases such as parsers, token-heavy workloads, and repeated identifier storage.
+
+#### Pitfalls to Avoid
+- Building long strings with repeated `+=` inside loops.
+- Using `is` for string comparison because interning made it "seem" correct in a test.
+- Confusing text length with byte length.
+- Assuming `len(s)` always matches what a human sees as one visual character.
+- Treating Unicode normalization issues as rare when text comes from multiple systems or user inputs.
+- Reversing complex user-facing Unicode text with naive slicing when grapheme clusters matter.
+
+#### Quick Recap
+- Strings are immutable Unicode text objects.
+- Immutability makes them hashable and safe to share, but any apparent modification creates a new string.
+- Interning lets Python reuse equal strings in some cases to save memory and speed comparisons.
+- `join` is the right tool for combining many string pieces efficiently.
+- Unicode means characters, bytes, and visible glyphs are related but not identical concepts.
+
+#### Interview Sound Bite
+A Python string is an immutable Unicode object, so I treat it as read-only text, use `join` instead of repeated `+=` for heavy construction, and remember that interning and Unicode representation affect memory behavior and comparison edge cases.
+
+#### Memory Hook
+String = immutable Unicode text. Join, do not grow.
+
+#### Practice Questions
+1. Why is repeated `+=` on strings inside a loop considered an anti-pattern?
+2. What is string interning and when is it useful?
+3. Why should you use `==` instead of `is` for string comparison?
+4. What is the difference between `str` and `bytes` in Python 3?
+5. Why can `len()` be surprising for Unicode text?
+
+#### Practice Answers
+1. Repeated `+=` is an anti-pattern because strings are immutable, so each concatenation creates a new string and copies old content again, which can lead to quadratic total work.
+2. String interning is the practice of reusing one shared object for equal strings. It is useful in specialized workloads such as parsers, compilers, and systems that repeatedly store the same identifiers or tokens.
+3. You should use `==` because it compares string values. `is` checks object identity, and interning can make identity appear equal sometimes even when that behavior is not guaranteed.
+4. `str` represents Unicode text, while `bytes` represents raw encoded binary data. You decode bytes into strings and encode strings into bytes.
+5. `len()` counts Unicode code points, not encoded bytes and not always the number of user-perceived visual characters, so text with emojis or combining marks can be surprising.
 
 ---
 
