@@ -679,9 +679,212 @@ String = immutable Unicode text. Join, do not grow.
 ---
 
 ### Topic 5: Dicts - Hash Table Internals
-Status: Not Started
+Status: In Progress
 
-Notes: Pending.
+#### Concept in One Line
+A Python dict is a hash table that maps unique, hashable keys to values with average O(1) lookup, insert, update, and delete.
+
+#### Mental Model
+Think of a dict like a smart locker system. The key is passed through a hash function, the hash points Python toward a storage slot, and Python checks the actual key before returning the value.
+
+#### Memory Behavior
+- A dict stores references to keys and values, not raw object data inline.
+- CPython dicts use a hash table with open addressing, meaning entries live inside an internal table and collisions are handled by probing for another slot.
+- Dicts keep extra empty space so lookups and inserts stay fast.
+- When the table gets too full, Python resizes it and redistributes entries into a larger table.
+- Python 3.7+ guarantees insertion-order iteration as part of the language.
+- Updating an existing key does not change its order; deleting and reinserting a key moves it to the end.
+- String and bytes hashes are randomized between Python processes for security, so hash values are not stable across separate runs.
+
+#### Key Behaviors and Gotchas
+- Dict keys must be hashable.
+- Immutable built-ins like `str`, `int`, `float`, and hashable `tuple` values can be keys.
+- Mutable built-ins like `list`, `dict`, and `set` cannot be keys because their contents can change.
+- A key's hash and equality behavior must stay stable while it is inside a dict.
+- If two keys have the same hash, Python resolves the collision by checking candidate slots and comparing actual keys.
+- If you assign the same key again, the value is replaced instead of creating a second entry.
+- Dict views such as `keys()`, `values()`, and `items()` are dynamic views, not fixed snapshots.
+
+#### Time Complexity Notes
+- Lookup by key: average O(1)
+- Insert or update: average O(1)
+- Delete by key: average O(1)
+- Membership test by key (`key in d`): average O(1)
+- Iteration over all items: O(n)
+- Copy: O(n)
+- Worst case: O(n) if many keys collide heavily, though Python's implementation and hash randomization reduce practical risk
+
+#### Examples
+Example 1: Basic lookup and update
+
+```python
+profile = {
+    "name": "Aravind",
+    "role": "learner",
+}
+
+print(profile["name"])  # Aravind
+
+profile["role"] = "python learner"
+profile["level"] = "module-1"
+
+print(profile)
+```
+
+What to notice:
+- Updating an existing key replaces the value.
+- Adding a new key creates a new mapping.
+
+Example 2: Unhashable key error
+
+```python
+scores = {}
+
+scores[("math", "term-1")] = 95
+print(scores[("math", "term-1")])  # 95
+
+scores[["math", "term-1"]] = 95
+```
+
+What to notice:
+- The tuple key works because its elements are hashable strings.
+- The list key raises `TypeError` because lists are unhashable.
+
+Example 3: Collision handling with custom keys
+
+```python
+class BadHash:
+    def __init__(self, value):
+        self.value = value
+
+    def __hash__(self):
+        return 1
+
+    def __eq__(self, other):
+        return isinstance(other, BadHash) and self.value == other.value
+
+
+data = {
+    BadHash("a"): 10,
+    BadHash("b"): 20,
+}
+
+print(data[BadHash("a")])  # 10
+print(data[BadHash("b")])  # 20
+```
+
+What to notice:
+- Both keys return the same hash.
+- Python still finds the correct value by probing and then checking equality.
+- Too many collisions make dict operations slower.
+
+Example 4: Insertion order guarantee
+
+```python
+events = {}
+events["login"] = 1
+events["search"] = 2
+events["checkout"] = 3
+
+events["search"] = 99
+
+print(list(events.keys()))  # ['login', 'search', 'checkout']
+
+del events["login"]
+events["login"] = 100
+
+print(list(events.keys()))  # ['search', 'checkout', 'login']
+```
+
+What to notice:
+- Updating a key does not move it.
+- Deleting and reinserting places it at the end.
+
+Example 5: Dict as a dispatch table
+
+```python
+def start():
+    return "starting"
+
+def stop():
+    return "stopping"
+
+def restart():
+    return "restarting"
+
+
+actions = {
+    "start": start,
+    "stop": stop,
+    "restart": restart,
+}
+
+command = "restart"
+print(actions[command]())  # restarting
+```
+
+What to notice:
+- A dict can replace long `if` / `elif` chains when mapping commands to behavior.
+- Function objects are values, so they can be stored and called later.
+
+Example 6: Counting frequencies
+
+```python
+words = ["api", "db", "api", "cache", "db", "api"]
+counts = {}
+
+for word in words:
+    counts[word] = counts.get(word, 0) + 1
+
+print(counts)  # {'api': 3, 'db': 2, 'cache': 1}
+```
+
+What to notice:
+- `get(word, 0)` handles first-time keys cleanly.
+- Frequency counting is one of the most common dict patterns.
+
+#### Common Patterns
+- Use dicts for fast lookup by key.
+- Use dicts to count frequencies, group records, and build indexes.
+- Use dicts as dispatch tables when commands map cleanly to functions.
+- Use composite tuple keys when a lookup depends on multiple fields.
+- Use `key in d` for key membership checks.
+- Use `.get(key, default)` when missing keys are expected.
+
+#### Pitfalls to Avoid
+- Using a list, dict, or set as a dict key.
+- Checking membership in `d.keys()` when `key in d` is simpler and direct.
+- Assuming a missing key returns `None`; direct access with `d[key]` raises `KeyError`.
+- Mutating an object used as a key in a way that changes its hash or equality behavior.
+- Depending on raw `hash()` values across separate Python runs.
+- Forgetting that dict views are dynamic and reflect later changes.
+
+#### Quick Recap
+- Dicts are hash tables that map hashable keys to values.
+- Average lookup, insert, update, delete, and key membership are O(1).
+- Collisions are handled internally by probing and equality checks.
+- Python 3.7+ guarantees insertion-order iteration.
+- Keys must have stable hash and equality behavior.
+
+#### Interview Sound Bite
+A Python dict is a compact hash table with average O(1) key lookup; I use it for indexing, counting, grouping, and dispatch, while making sure keys are hashable and stable.
+
+#### Memory Hook
+Dict = hash key -> find slot -> verify key -> return value.
+
+#### Practice Questions
+1. Why are lists not allowed as dict keys?
+2. What happens when two different keys have the same hash?
+3. What does Python 3.7+ guarantee about dict order?
+4. Why is `key in d` usually O(1)?
+5. When would a dict be better than a list?
+
+#### Practice Answers
+1. Lists are not allowed as dict keys because they are mutable and unhashable. If a key could change after insertion, Python might not be able to find it in the hash table later.
+2. Python handles hash collisions by probing for candidate slots and then checking actual key equality. Equal hash values do not automatically mean the keys are equal.
+3. Python 3.7+ guarantees that dict iteration follows insertion order. Updating an existing key keeps its position, while deleting and reinserting moves it to the end.
+4. `key in d` is usually O(1) because Python hashes the key and uses that hash to jump close to the key's storage slot instead of scanning every entry.
+5. A dict is better than a list when you need fast lookup by a meaningful key, such as user ID, product SKU, word frequency, or command name.
 
 ---
 
