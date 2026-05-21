@@ -889,9 +889,193 @@ Dict = hash key -> find slot -> verify key -> return value.
 ---
 
 ### Topic 6: Sets and Frozensets
-Status: Not Started
+Status: In Progress
 
-Notes: Pending.
+#### Concept in One Line
+A set is a hash-based collection of unique, hashable elements with fast membership checks; a frozenset is the immutable version.
+
+#### Mental Model
+Think of a set like a guest list where each name can appear only once. Python uses hashing to quickly decide whether a value is already on the list, without scanning from the beginning each time.
+
+#### Memory Behavior
+- Sets are implemented using a hash table, similar in spirit to dict keys without values.
+- A set stores references to elements, not raw object data inline.
+- Elements must be hashable because Python uses each element's hash to locate it.
+- Sets keep extra empty table space so membership checks, inserts, and deletes stay fast.
+- When the internal table gets too full, Python resizes it and redistributes elements.
+- Sets are mutable, so they are unhashable and cannot be used as dict keys or set elements.
+- Frozensets are immutable and hashable when all their elements are hashable, so they can be used as dict keys or stored inside other sets.
+
+#### Key Behaviors and Gotchas
+- Sets automatically remove duplicates.
+- Sets are unordered collections; do not depend on display or iteration order for logic.
+- `in` on a set is average O(1), much faster than scanning a list for large collections.
+- Set algebra makes common/unique/difference operations concise.
+- `{}` creates an empty dict, not an empty set.
+- Use `set()` to create an empty set.
+- A set can contain tuples if the tuple elements are hashable, but it cannot contain lists.
+
+#### Time Complexity Notes
+- Membership test (`x in s`): average O(1)
+- Add element: average O(1)
+- Remove element: average O(1)
+- Iterate all elements: O(n)
+- Convert list to set: O(n)
+- Union: O(len(a) + len(b))
+- Intersection: O(min(len(a), len(b))) on average
+- Difference: O(len(a)) on average
+- Worst case: O(n) if many elements collide heavily
+
+#### Examples
+Example 1: Deduplication
+
+```python
+ids = [101, 102, 101, 103, 102, 104]
+unique_ids = set(ids)
+
+print(unique_ids)  # order is not guaranteed
+print(len(unique_ids))  # 4
+```
+
+What to notice:
+- Duplicate values collapse into one set element.
+- The output order should not be treated as meaningful.
+
+Example 2: Deduplicate while preserving order
+
+```python
+ids = [101, 102, 101, 103, 102, 104]
+unique_in_order = list(dict.fromkeys(ids))
+
+print(unique_in_order)  # [101, 102, 103, 104]
+```
+
+What to notice:
+- A plain set removes duplicates but does not promise original order.
+- `dict.fromkeys()` is a common order-preserving deduplication idiom in Python 3.7+.
+
+Example 3: Membership test speed vs list
+
+```python
+from timeit import timeit
+
+numbers_list = list(range(100_000))
+numbers_set = set(numbers_list)
+
+list_time = timeit("99_999 in numbers_list", globals=globals(), number=1_000)
+set_time = timeit("99_999 in numbers_set", globals=globals(), number=1_000)
+
+print(f"list membership: {list_time:.6f}s")
+print(f"set membership:  {set_time:.6f}s")
+```
+
+What to notice:
+- List membership scans until it finds the value.
+- Set membership uses hashing and is usually much faster for large collections.
+
+Example 4: Finding common and unique elements
+
+```python
+backend = {"python", "sql", "redis", "docker"}
+data = {"python", "sql", "pandas", "spark"}
+
+print(backend & data)  # common skills
+print(backend | data)  # all skills
+print(backend - data)  # only backend
+print(backend ^ data)  # in one set, but not both
+```
+
+What to notice:
+- `&` means intersection.
+- `|` means union.
+- `-` means difference.
+- `^` means symmetric difference.
+
+Example 5: Empty set gotcha
+
+```python
+empty_dict = {}
+empty_set = set()
+
+print(type(empty_dict))  # <class 'dict'>
+print(type(empty_set))   # <class 'set'>
+```
+
+What to notice:
+- `{}` is reserved for an empty dict.
+- Use `set()` when you need an empty set.
+
+Example 6: Frozenset as an immutable set
+
+```python
+required_permissions = frozenset({"read", "write"})
+
+cache = {
+    required_permissions: "read-write-user"
+}
+
+print(cache[frozenset({"write", "read"})])  # read-write-user
+```
+
+What to notice:
+- Frozensets are immutable and hashable.
+- Element order does not matter for set or frozenset equality.
+
+Example 7: Unhashable elements
+
+```python
+valid = {(1, 2), (3, 4)}
+print(valid)
+
+invalid = {[1, 2], [3, 4]}
+```
+
+What to notice:
+- Tuples can be set elements when their contents are hashable.
+- Lists cannot be set elements because lists are unhashable.
+
+#### Common Patterns
+- Use a set for fast membership checks.
+- Use a set to remove duplicates when order does not matter.
+- Use set algebra to find common, missing, unique, or combined elements.
+- Use a set to track visited nodes in graph, tree, or BFS/DFS problems.
+- Use a frozenset when you need an immutable set, a set inside another set, or a set-like dict key.
+- Use `dict.fromkeys(items)` when you need deduplication while preserving insertion order.
+
+#### Pitfalls to Avoid
+- Using `{}` when you meant to create an empty set.
+- Depending on set iteration order.
+- Putting mutable objects like lists or dicts into a set.
+- Using a set when duplicates or order are meaningful.
+- Forgetting that `remove(x)` raises `KeyError` when `x` is absent.
+- Using list membership repeatedly when a set would make the operation much faster.
+
+#### Quick Recap
+- Sets are hash-based collections of unique elements.
+- Membership, add, and remove are average O(1).
+- Sets are mutable and unhashable.
+- Frozensets are immutable and can be hashable.
+- Set algebra is ideal for common, unique, missing, and combined element problems.
+
+#### Interview Sound Bite
+A Python set is like a dict with only keys, giving average O(1) membership and automatic deduplication; I use it for visited tracking, uniqueness, and set algebra, and I use frozenset when I need an immutable set value.
+
+#### Memory Hook
+Set = dict keys only. Unique, fast, unordered.
+
+#### Practice Questions
+1. Why are set membership checks usually faster than list membership checks?
+2. What is the difference between `set` and `frozenset`?
+3. Why does `{}` create a dict instead of a set?
+4. When should you avoid using a set?
+5. What do `&`, `|`, `-`, and `^` mean for sets?
+
+#### Practice Answers
+1. Set membership is usually faster because Python uses hashing to jump close to the element's storage location, while list membership scans elements one by one.
+2. A `set` is mutable and unhashable. A `frozenset` is immutable and can be hashable when its elements are hashable.
+3. `{}` creates an empty dict because that syntax was already used for dictionaries. Python uses `set()` for an empty set.
+4. Avoid using a set when duplicates matter, when order must be preserved by the collection itself, or when the elements are mutable and unhashable.
+5. `&` is intersection, `|` is union, `-` is difference, and `^` is symmetric difference.
 
 ---
 
