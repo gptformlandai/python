@@ -200,7 +200,7 @@
 | Module | Status |
 |--------|--------|
 | Module 1 — Theory & Memory Internals | In Progress |
-| Module 2 — Access, Mutation & Time Complexity | Not Started |
+| Module 2 — Access, Mutation & Time Complexity | In Progress |
 | Module 3 — Power Idioms & Collections | Not Started |
 | Module 4 — Mastery Exercises | Not Started |
 | Module 5 — Mini Project | Not Started |
