@@ -433,7 +433,7 @@ Use this section whenever you ask a question during Module 2.
 
 | # | Date | Topic | Your Doubt | Answer Summary | Action |
 |---|------|-------|------------|----------------|--------|
-| 1 | 2026-05-22 | - | - | - | - |
+| 1 | 2026-05-24 | Topic 8: Slicing Deep Dive | Does `start > stop` without negative indexing also work for reading a string in reverse? | Yes, but only when the slice step is negative. Reverse slicing depends on a negative step like `s[5:1:-1]`, not on negative indices. If `start > stop` and the step is positive or omitted, the result is an empty slice. | Remember: reverse direction comes from negative step, not from negative indices. |
 
 ---
 
