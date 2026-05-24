@@ -35,7 +35,7 @@ Estimated total: ~3 hours 15 min
 ## Topic Notes
 
 ### Topic 7: Big-O Per Operation
-Status: In Progress
+Status: Complete
 
 #### Concept in One Line
 Big-O describes how the cost of an operation grows as input size grows, so it helps you choose the right data structure before performance breaks.
@@ -225,9 +225,185 @@ Big-O = growth curve, not stopwatch.
 ---
 
 ### Topic 8: Slicing Deep Dive
-Status: Not Started
+Status: In Progress
 
-Notes: Pending.
+#### Concept in One Line
+Slicing selects a range from a sequence using `[start:stop:step]`, where `start` is inclusive, `stop` is exclusive, and `step` controls how you move through the data.
+
+#### Mental Model
+Think of slicing like placing two markers on a ruler and then deciding how to walk between them. You start at `start`, stop before `stop`, and hop by `step`. A negative step means you walk backward instead of forward.
+
+#### Memory Behavior in CPython
+- Slicing built-in sequences like `list`, `tuple`, and `str` usually creates a new object, not a view into the old one.
+- For lists and tuples, the sliced container holds references to the same inner objects, so slicing is shallow.
+- That means nested mutable objects are still shared between the original sequence and the slice.
+- String slices create new string values because strings are immutable.
+- A full list slice like `lst[:]` creates a new outer list object.
+- Slice assignment such as `lst[1:3] = [...]` mutates the original list in place and may shift later elements.
+- Because slicing copies elements or references into a new container, slicing cost grows with the slice length.
+
+#### Key Behaviors and Gotchas
+- `start` is included, `stop` is excluded.
+- Negative indices count from the end: `-1` means last item, `-2` means second last, and so on.
+- Omitting values gives defaults, so `seq[:]` means the whole sequence.
+- `seq[::-1]` walks backward one step at a time, which is why it reverses the sequence.
+- `step` cannot be zero.
+- Slicing out of bounds does not raise `IndexError`; Python clips the range safely.
+- A slice copy is different from aliasing, but it is still shallow for nested mutable values.
+- Slice assignment works for mutable sequences like `list`, but not for immutable sequences like `tuple` and `str`.
+
+#### Time Complexity Notes
+- Single index access: O(1)
+- Slice of length `k`: O(k)
+- Full slice copy of length `n`: O(n)
+- Reverse with `[::-1]`: O(n)
+- Membership on a slice: depends on the slice size, usually O(k)
+- List slice assignment: grows with the replaced region and any shifting work; treat it as proportional to the size affected
+
+#### Examples
+Example 1: Basic slicing rules
+
+```python
+data = [0, 1, 2, 3, 4, 5]
+
+print(data[1:4])   # [1, 2, 3]
+print(data[:3])    # [0, 1, 2]
+print(data[3:])    # [3, 4, 5]
+print(data[::2])   # [0, 2, 4]
+print(data[1:5:2]) # [1, 3]
+```
+
+What to notice:
+- `start` is included.
+- `stop` is excluded.
+- `step` controls the stride.
+
+Example 2: Negative indices and reverse slicing
+
+```python
+text = "python"
+
+print(text[-3:])    # hon
+print(text[:-1])    # pytho
+print(text[::-1])   # nohtyp
+print(text[5:1:-1]) # noht
+```
+
+What to notice:
+- Negative indices count from the end.
+- Negative step means move backward.
+- When moving backward, your start must be to the right of your stop to collect anything.
+
+Example 3: Slicing creates a new outer list, but it is shallow
+
+```python
+matrix = [[1, 2], [3, 4], [5, 6]]
+copy_matrix = matrix[:]
+
+matrix[0].append(99)
+
+print(matrix)       # [[1, 2, 99], [3, 4], [5, 6]]
+print(copy_matrix)  # [[1, 2, 99], [3, 4], [5, 6]]
+print(matrix is copy_matrix)  # False
+```
+
+What to notice:
+- The outer list is new.
+- The inner lists are still shared references.
+
+Example 4: Out-of-bounds slicing is safe
+
+```python
+values = [10, 20, 30]
+
+print(values[0:10])   # [10, 20, 30]
+print(values[10:20])  # []
+print(values[-10:2])  # [10, 20]
+```
+
+What to notice:
+- Slicing is forgiving.
+- Python clips the range instead of throwing `IndexError`.
+
+Example 5: Palindrome check with slicing
+
+```python
+word = "level"
+print(word == word[::-1])  # True
+```
+
+What to notice:
+- Reverse slicing is concise.
+- This is elegant for simple interview-style problems.
+
+Example 6: Slice assignment mutates the same list object
+
+```python
+nums = [10, 20, 30, 40, 50]
+nums[1:4] = [200, 300]
+
+print(nums)  # [10, 200, 300, 50]
+```
+
+What to notice:
+- Slice reading creates a value.
+- Slice assignment changes the original list in place.
+- The replacement can change the list length.
+
+Example 7: Every-nth element pattern
+
+```python
+events = ["e1", "e2", "e3", "e4", "e5", "e6"]
+print(events[::3])  # ['e1', 'e4']
+```
+
+What to notice:
+- Slicing is useful for sampling or stepping patterns.
+- It stays readable when the stride is meaningful.
+
+#### Common Patterns
+- Use `seq[:n]` for a prefix.
+- Use `seq[n:]` for a suffix.
+- Use `seq[:-1]` or `seq[1:]` to drop edges.
+- Use `seq[::-1]` for a quick reverse.
+- Use `seq[::k]` for every `k`th item.
+- Use `lst[:]` for a shallow outer copy of a list.
+- Use slice assignment to replace or delete a range in a list.
+
+#### Pitfalls to Avoid
+- Thinking the stop index is included.
+- Assuming slicing returns a view into the original list.
+- Forgetting that list slicing is shallow for nested mutables.
+- Using repeated slicing in tight loops when it creates too many copies.
+- Forgetting that `[::-1]` copies rather than reversing in place.
+- Using `step=0`, which raises `ValueError`.
+
+#### Quick Recap
+- Slicing uses `[start:stop:step]`.
+- `start` is inclusive, `stop` is exclusive.
+- Negative indices count from the end, and negative steps move backward.
+- List slicing copies the outer container, not nested mutable contents.
+- Slice assignment mutates a list in place.
+
+#### Interview Sound Bite
+In Python, slicing is a range-selection tool with inclusive start and exclusive stop; it is powerful for extraction and reversal, but I remember that built-in slices usually allocate new objects and list slices are shallow copies.
+
+#### Memory Hook
+Slice = take a range, not a view.
+
+#### Practice Questions
+1. Why does `seq[1:4]` return three items instead of four?
+2. Why can `matrix[:]` still lead to shared nested mutations?
+3. What does `[::-1]` mean exactly?
+4. Why does `values[100:200]` return `[]` instead of crashing?
+5. What is the difference between `nums[1:3]` and `nums[1:3] = [...]`?
+
+#### Practice Answers
+1. `seq[1:4]` returns three items because slicing includes the start index but excludes the stop index.
+2. `matrix[:]` only copies the outer list, so the inner lists remain shared references between the original and the slice.
+3. `[::-1]` means take the whole sequence and walk through it backward one step at a time.
+4. `values[100:200]` returns `[]` because slicing is bounds-safe and Python clips the requested range instead of raising `IndexError`.
+5. `nums[1:3]` reads and returns a slice value, while `nums[1:3] = [...]` mutates that region of the original list in place.
 
 ---
 
@@ -272,7 +448,7 @@ Track recurring mistakes so we can fix patterns quickly.
 
 ## Module 2 Progress Tracker
 
-- [ ] Topic 7 complete
+- [x] Topic 7 complete
 - [ ] Topic 8 complete
 - [ ] Topic 9 complete
 - [ ] Topic 10 complete
