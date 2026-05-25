@@ -225,7 +225,7 @@ Big-O = growth curve, not stopwatch.
 ---
 
 ### Topic 8: Slicing Deep Dive
-Status: In Progress
+Status: Complete
 
 #### Concept in One Line
 Slicing selects a range from a sequence using `[start:stop:step]`, where `start` is inclusive, `stop` is exclusive, and `step` controls how you move through the data.
@@ -408,9 +408,196 @@ Slice = take a range, not a view.
 ---
 
 ### Topic 9: List Patterns
-Status: Not Started
+Status: In Progress
 
-Notes: Pending.
+#### Concept in One Line
+List patterns are the common problem-solving shapes that make lists powerful in real code: filtering, flattening, grouping, chunking, zipping, rotating, and deduplicating while preserving order.
+
+#### Mental Model
+Think of a list as a flexible conveyor belt. List patterns are the standard operations you perform on that belt: keep some items, reshape them, combine multiple belts, split one belt into chunks, or rearrange order without losing clarity.
+
+#### Memory Behavior in CPython
+- Most list pattern operations create a new list rather than mutating the old one.
+- List comprehensions allocate a fresh list and append references into it.
+- Flattening usually builds a new output list, which grows with the total number of nested elements produced.
+- `zip()` itself is lazy in Python 3, but converting it to `list(zip(...))` materializes the paired values in memory.
+- `dict.fromkeys(lst)` for order-preserving deduplication creates an intermediate dict before producing the final list.
+- Chunking with slicing creates multiple new list objects, and each slice is shallow.
+- Rotating with slicing like `lst[k:] + lst[:k]` creates new lists and then combines them, so it is elegant but not free.
+
+#### Key Behaviors and Gotchas
+- A list comprehension is often clearer and faster than building the same list with repeated `append()` in a manual loop.
+- Flattening one level is easy; flattening arbitrary depth usually needs recursion or an explicit stack.
+- `zip()` stops at the shortest input.
+- `zip(*matrix)` is a compact transpose pattern.
+- `lst[i:i+n]` is a standard chunking pattern, but the last chunk may be shorter.
+- Order-preserving deduplication is not the same as plain deduplication with `set()`.
+- Rotating with slicing handles many problems cleanly, but modulo arithmetic keeps rotation counts safe.
+
+#### Time Complexity Notes
+- Filtering a list: O(n)
+- Mapping or transforming a list: O(n)
+- Flattening one level with total `n` produced elements: O(n)
+- Deduplicate while preserving order: O(n)
+- Chunking into slices across the whole list: O(n)
+- Transpose a matrix of `r x c`: O(r * c)
+- Rotation via slicing: O(n)
+- Zipping two lists of length `n`: O(n) when materialized
+
+#### Examples
+Example 1: Filtering with a comprehension
+
+```python
+nums = [1, 2, 3, 4, 5, 6]
+evens = [num for num in nums if num % 2 == 0]
+
+print(evens)  # [2, 4, 6]
+```
+
+What to notice:
+- This is the cleanest common filtering pattern.
+- One pass over the data, one resulting list.
+
+Example 2: Flatten one level of nesting
+
+```python
+rows = [[1, 2], [3, 4], [5, 6]]
+flat = [value for row in rows for value in row]
+
+print(flat)  # [1, 2, 3, 4, 5, 6]
+```
+
+What to notice:
+- The order of loops in the comprehension matches nested iteration.
+- This is for one-level flattening, not arbitrary depth.
+
+Example 3: Deduplicate while preserving order
+
+```python
+names = ["ana", "bob", "ana", "chris", "bob", "dina"]
+unique_names = list(dict.fromkeys(names))
+
+print(unique_names)  # ['ana', 'bob', 'chris', 'dina']
+```
+
+What to notice:
+- `set(names)` removes duplicates but loses order semantics.
+- `dict.fromkeys()` preserves first-seen order.
+
+Example 4: Chunk a list into fixed-size groups
+
+```python
+data = list(range(1, 11))
+chunks = [data[i:i + 3] for i in range(0, len(data), 3)]
+
+print(chunks)  # [[1, 2, 3], [4, 5, 6], [7, 8, 9], [10]]
+```
+
+What to notice:
+- Slicing makes chunking easy.
+- The final chunk may be smaller.
+
+Example 5: Transpose a matrix
+
+```python
+matrix = [
+    [1, 2, 3],
+    [4, 5, 6],
+]
+
+transposed = [list(col) for col in zip(*matrix)]
+print(transposed)  # [[1, 4], [2, 5], [3, 6]]
+```
+
+What to notice:
+- `zip(*matrix)` is one of Python's most useful shape-transform tricks.
+- `zip()` returns tuples, so we convert columns to lists here.
+
+Example 6: Zip two lists together
+
+```python
+names = ["ana", "bob", "chris"]
+scores = [92, 85, 88]
+
+paired = list(zip(names, scores))
+print(paired)  # [('ana', 92), ('bob', 85), ('chris', 88)]
+```
+
+What to notice:
+- `zip()` combines positionally.
+- It stops at the shorter input.
+
+Example 7: Rotate a list left
+
+```python
+items = [1, 2, 3, 4, 5]
+k = 2
+k %= len(items)
+
+rotated = items[k:] + items[:k]
+print(rotated)  # [3, 4, 5, 1, 2]
+```
+
+What to notice:
+- Rotation is just two slices glued together.
+- Modulo makes large rotation counts safe.
+
+Example 8: Remove falsy values
+
+```python
+values = [0, 1, "", "python", None, [], [1, 2]]
+cleaned = [value for value in values if value]
+
+print(cleaned)  # [1, 'python', [1, 2]]
+```
+
+What to notice:
+- This is a compact cleanup pattern.
+- Be careful: it removes all falsy values, not just `None`.
+
+#### Common Patterns
+- Use comprehensions for filter-and-transform tasks.
+- Use nested comprehensions for one-level flattening.
+- Use `dict.fromkeys()` to deduplicate while preserving order.
+- Use slicing with a step in `range()` for chunking.
+- Use `zip()` to pair related lists.
+- Use `zip(*matrix)` for transpose problems.
+- Use slicing plus concatenation for simple rotations.
+
+#### Pitfalls to Avoid
+- Using `set()` when first-seen order must be preserved.
+- Overusing nested comprehensions when a simple loop would be clearer.
+- Forgetting that `zip()` stops at the shortest iterable.
+- Treating shallow flattening as if it handled arbitrary nesting.
+- Repeatedly slicing large lists in hot loops without considering copy cost.
+- Removing falsy values when you only meant to remove `None`.
+
+#### Quick Recap
+- List patterns are reusable shapes for common data work.
+- Comprehensions are central for filtering and transforming.
+- Flattening, chunking, transposing, and rotating are mostly composition of simple tools.
+- Preserving order during deduplication needs a different approach than plain `set()`.
+- Clean patterns matter because list operations are frequent in interviews and production code.
+
+#### Interview Sound Bite
+For Python list problems, I lean on a small set of reusable patterns: comprehensions for filter/transform, `dict.fromkeys()` for ordered deduplication, slicing for chunking and rotation, and `zip(*matrix)` for transpose.
+
+#### Memory Hook
+List patterns = reshape the conveyor belt.
+
+#### Practice Questions
+1. Why is `dict.fromkeys(lst)` often better than `set(lst)` for deduplication?
+2. How does `zip(*matrix)` transpose rows into columns?
+3. Why is `[x for row in rows for x in row]` only a one-level flatten?
+4. Why can chunking with slicing be expensive on very large lists?
+5. What is the risk of filtering with `if value`?
+
+#### Practice Answers
+1. `dict.fromkeys(lst)` preserves the first-seen order of elements, while `set(lst)` only guarantees uniqueness, not meaningful order.
+2. `zip(*matrix)` unpacks each row as a separate argument to `zip()`, so `zip()` groups elements by position, effectively turning columns into tuples.
+3. `[x for row in rows for x in row]` only flattens one nesting layer because it assumes each `row` is directly iterable into final values.
+4. Chunking with slicing creates many new list objects and copies references into each slice, so the total work still scales with the data size.
+5. `if value` removes every falsy value such as `0`, `''`, `None`, and `[]`, which may be broader than the intended cleanup.
 
 ---
 
@@ -449,7 +636,7 @@ Track recurring mistakes so we can fix patterns quickly.
 ## Module 2 Progress Tracker
 
 - [x] Topic 7 complete
-- [ ] Topic 8 complete
+- [x] Topic 8 complete
 - [ ] Topic 9 complete
 - [ ] Topic 10 complete
 - [ ] Topic 11 complete
