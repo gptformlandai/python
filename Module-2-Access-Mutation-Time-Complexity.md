@@ -419,20 +419,25 @@ Think of a list as a flexible conveyor belt. List patterns are the standard oper
 #### Memory Behavior in CPython
 - Most list pattern operations create a new list rather than mutating the old one.
 - List comprehensions allocate a fresh list and append references into it.
+- Generator expressions do not build the whole result up front; they produce one value at a time as you iterate.
 - Flattening usually builds a new output list, which grows with the total number of nested elements produced.
 - `zip()` itself is lazy in Python 3, but converting it to `list(zip(...))` materializes the paired values in memory.
+- Generator functions using `yield` also stay lazy and preserve execution state between iterations.
 - `dict.fromkeys(lst)` for order-preserving deduplication creates an intermediate dict before producing the final list.
 - Chunking with slicing creates multiple new list objects, and each slice is shallow.
 - Rotating with slicing like `lst[k:] + lst[:k]` creates new lists and then combines them, so it is elegant but not free.
 
 #### Key Behaviors and Gotchas
 - A list comprehension is often clearer and faster than building the same list with repeated `append()` in a manual loop.
+- A generator expression is the lazy sibling of a list comprehension.
 - Flattening one level is easy; flattening arbitrary depth usually needs recursion or an explicit stack.
 - `zip()` stops at the shortest input.
+- Use `itertools.zip_longest()` when you need to keep going across uneven inputs.
 - `zip(*matrix)` is a compact transpose pattern.
 - `lst[i:i+n]` is a standard chunking pattern, but the last chunk may be shorter.
 - Order-preserving deduplication is not the same as plain deduplication with `set()`.
 - Rotating with slicing handles many problems cleanly, but modulo arithmetic keeps rotation counts safe.
+- Generators are one-pass iterators; once consumed, they are exhausted.
 
 #### Time Complexity Notes
 - Filtering a list: O(n)
@@ -443,6 +448,7 @@ Think of a list as a flexible conveyor belt. List patterns are the standard oper
 - Transpose a matrix of `r x c`: O(r * c)
 - Rotation via slicing: O(n)
 - Zipping two lists of length `n`: O(n) when materialized
+- A generator expression does O(n) total work when fully consumed, but it does not store all `n` produced values at once
 
 #### Examples
 Example 1: Filtering with a comprehension
@@ -527,7 +533,70 @@ What to notice:
 - `zip()` combines positionally.
 - It stops at the shorter input.
 
-Example 7: Rotate a list left
+Example 7: Unzip paired data
+
+```python
+pairs = [("ana", 92), ("bob", 85), ("chris", 88)]
+names, scores = zip(*pairs)
+
+print(names)   # ('ana', 'bob', 'chris')
+print(scores)  # (92, 85, 88)
+```
+
+What to notice:
+- `zip(*pairs)` reverses a previously zipped structure.
+- This is often called unzipping.
+
+Example 8: Uneven inputs with `zip()` vs `zip_longest()`
+
+```python
+from itertools import zip_longest
+
+names = ["ana", "bob", "chris"]
+scores = [92, 85]
+
+print(list(zip(names, scores)))
+print(list(zip_longest(names, scores, fillvalue="missing")))
+```
+
+What to notice:
+- `zip()` truncates to the shortest input.
+- `zip_longest()` preserves the longer input and fills missing values.
+
+Example 9: Generator expression vs list comprehension
+
+```python
+nums = [1, 2, 3, 4, 5]
+
+squares_list = [num * num for num in nums]
+squares_gen = (num * num for num in nums)
+
+print(squares_list)       # [1, 4, 9, 16, 25]
+print(next(squares_gen))  # 1
+print(next(squares_gen))  # 4
+```
+
+What to notice:
+- The list comprehension builds everything immediately.
+- The generator expression yields values on demand.
+- The generator keeps moving forward as you consume it.
+
+Example 10: Generator function for chunked processing
+
+```python
+def chunked(items, size):
+    for i in range(0, len(items), size):
+        yield items[i:i + size]
+
+for chunk in chunked(list(range(1, 8)), 3):
+    print(chunk)
+```
+
+What to notice:
+- `yield` turns the function into a generator.
+- This pattern is useful when you want chunk-by-chunk processing instead of building all chunks at once.
+
+Example 11: Rotate a list left
 
 ```python
 items = [1, 2, 3, 4, 5]
@@ -542,7 +611,7 @@ What to notice:
 - Rotation is just two slices glued together.
 - Modulo makes large rotation counts safe.
 
-Example 8: Remove falsy values
+Example 12: Remove falsy values
 
 ```python
 values = [0, 1, "", "python", None, [], [1, 2]]
@@ -557,33 +626,42 @@ What to notice:
 
 #### Common Patterns
 - Use comprehensions for filter-and-transform tasks.
+- Use generator expressions when you want lazy transformation rather than immediate materialization.
 - Use nested comprehensions for one-level flattening.
 - Use `dict.fromkeys()` to deduplicate while preserving order.
 - Use slicing with a step in `range()` for chunking.
 - Use `zip()` to pair related lists.
+- Use `zip(*pairs)` to unzip paired data.
+- Use `zip_longest()` when uneven inputs must be preserved.
 - Use `zip(*matrix)` for transpose problems.
+- Use generator functions with `yield` for streaming or chunked processing.
 - Use slicing plus concatenation for simple rotations.
 
 #### Pitfalls to Avoid
 - Using `set()` when first-seen order must be preserved.
 - Overusing nested comprehensions when a simple loop would be clearer.
 - Forgetting that `zip()` stops at the shortest iterable.
+- Assuming `zip()` pads automatically when inputs differ in length.
 - Treating shallow flattening as if it handled arbitrary nesting.
+- Forgetting that generators are exhausted after you iterate through them.
+- Converting a generator to a list immediately and then expecting a memory benefit.
 - Repeatedly slicing large lists in hot loops without considering copy cost.
 - Removing falsy values when you only meant to remove `None`.
 
 #### Quick Recap
 - List patterns are reusable shapes for common data work.
 - Comprehensions are central for filtering and transforming.
+- `zip()` is for pairing, `zip(*pairs)` is for unpairing, and `zip_longest()` helps with uneven inputs.
+- Generators let you process values lazily instead of materializing them all at once.
 - Flattening, chunking, transposing, and rotating are mostly composition of simple tools.
 - Preserving order during deduplication needs a different approach than plain `set()`.
 - Clean patterns matter because list operations are frequent in interviews and production code.
 
 #### Interview Sound Bite
-For Python list problems, I lean on a small set of reusable patterns: comprehensions for filter/transform, `dict.fromkeys()` for ordered deduplication, slicing for chunking and rotation, and `zip(*matrix)` for transpose.
+For Python list problems, I lean on a small set of reusable patterns: comprehensions or generators for transform, `dict.fromkeys()` for ordered deduplication, `zip()` and `zip(*...)` for pairing and reshaping, and slicing for chunking and rotation.
 
 #### Memory Hook
-List patterns = reshape the conveyor belt.
+List patterns = reshape the conveyor belt. Generators = do not load the whole belt.
 
 #### Practice Questions
 1. Why is `dict.fromkeys(lst)` often better than `set(lst)` for deduplication?
@@ -591,6 +669,8 @@ List patterns = reshape the conveyor belt.
 3. Why is `[x for row in rows for x in row]` only a one-level flatten?
 4. Why can chunking with slicing be expensive on very large lists?
 5. What is the risk of filtering with `if value`?
+6. Why does `zip()` sometimes seem to "drop" extra values?
+7. What is the practical difference between a list comprehension and a generator expression?
 
 #### Practice Answers
 1. `dict.fromkeys(lst)` preserves the first-seen order of elements, while `set(lst)` only guarantees uniqueness, not meaningful order.
@@ -598,6 +678,8 @@ List patterns = reshape the conveyor belt.
 3. `[x for row in rows for x in row]` only flattens one nesting layer because it assumes each `row` is directly iterable into final values.
 4. Chunking with slicing creates many new list objects and copies references into each slice, so the total work still scales with the data size.
 5. `if value` removes every falsy value such as `0`, `''`, `None`, and `[]`, which may be broader than the intended cleanup.
+6. `zip()` stops at the shortest iterable, so any extra values in longer inputs are ignored unless you use `itertools.zip_longest()`.
+7. A list comprehension builds the full result list immediately, while a generator expression produces values lazily as you iterate, which can save memory for large or streaming workloads.
 
 ---
 
