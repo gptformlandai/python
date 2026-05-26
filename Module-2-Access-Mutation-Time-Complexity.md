@@ -697,6 +697,7 @@ Think of a dict as an index desk. Dict patterns are the repeatable questions you
 - `d.get(key, default)` reads safely and does not modify the dict.
 - `d.setdefault(key, default)` may mutate the dict by inserting the key with the default value if the key is absent.
 - `d | other` creates a new merged dict, while `d.update(other)` and `d |= other` mutate the existing dict in place.
+- A dict can be built from a generator that yields `(key, value)` pairs, which lets values be produced lazily before the final dict is materialized.
 - Inversion builds a new dict, but repeated values can overwrite each other unless you explicitly group them.
 - Grouping patterns often store nested mutable containers like lists inside the dict, so those inner containers need careful handling.
 - Dict views like `keys()`, `values()`, and `items()` are dynamic and reflect later changes to the underlying dict.
@@ -707,6 +708,8 @@ Think of a dict as an index desk. Dict patterns are the repeatable questions you
 - `setdefault()` both returns a value and may insert it.
 - `in d` checks keys, not values.
 - Dict merge conflicts are resolved by the right-hand side winning.
+- `dict((k, v) for ...)` uses a generator expression to feed the dict constructor.
+- `{k: v for ...}` is a dict comprehension, not a generator; it builds the dict immediately.
 - Inverting a dict is only lossless when the original values are unique.
 - Chained `.get()` calls are useful for nested access, but they can blur the difference between "missing" and "present with None" if you are not careful.
 - Dict comprehensions are strong for filtering and transforming dictionaries in one pass.
@@ -863,12 +866,27 @@ What to notice:
 - Dict comprehensions are also useful for transformation, not just filtering.
 - The original dict remains unchanged.
 
+Example 10: Build a dict from a generator of pairs
+
+```python
+pairs = ((num, num * num) for num in range(5))
+squares = dict(pairs)
+
+print(squares)  # {0: 0, 1: 1, 2: 4, 3: 9, 4: 16}
+```
+
+What to notice:
+- Yes, generators can be used with dicts.
+- The generator yields `(key, value)` pairs lazily.
+- The final `dict(...)` call materializes the mapping.
+
 #### Common Patterns
 - Use `get()` for safe reads when missing keys are expected.
 - Use `setdefault()` for simple grouping or list accumulation.
 - Use `|` or `{**a, **b}` when you want a merged copy.
 - Use `update()` or `|=` when you want in-place mutation.
 - Use dict comprehensions for filter-and-transform operations.
+- Use `dict(generator_of_pairs)` when key-value pairs are produced lazily.
 - Use grouped inversion instead of plain inversion when duplicate values are possible.
 - Use chained `get()` for quick nested access when the structure is optional.
 
@@ -885,6 +903,7 @@ What to notice:
 - Dict patterns solve common mapping tasks cleanly: safe read, merge, group, invert, and nested access.
 - `get()` reads safely, `setdefault()` reads and may insert.
 - Merging can be copy-based or in-place depending on the operator you choose.
+- Generators can feed dict construction, but dict comprehensions build the dict immediately.
 - Inversion is only truly safe when original values are unique.
 - Dict comprehensions are the cleanest way to filter and transform mappings.
 
