@@ -408,7 +408,7 @@ Slice = take a range, not a view.
 ---
 
 ### Topic 9: List Patterns
-Status: In Progress
+Status: Complete
 
 #### Concept in One Line
 List patterns are the common problem-solving shapes that make lists powerful in real code: filtering, flattening, grouping, chunking, zipping, rotating, and deduplicating while preserving order.
@@ -684,9 +684,233 @@ List patterns = reshape the conveyor belt. Generators = do not load the whole be
 ---
 
 ### Topic 10: Dict Patterns
-Status: Not Started
+Status: In Progress
 
-Notes: Pending.
+#### Concept in One Line
+Dict patterns are the standard ways to use mappings for safe lookup, merging, grouping, inversion, and nested access without turning everyday data handling into repetitive boilerplate.
+
+#### Mental Model
+Think of a dict as an index desk. Dict patterns are the repeatable questions you ask at that desk: "get this if it exists," "combine these two indexes," "group these items under one label," or "walk this nested structure safely without crashing."
+
+#### Memory Behavior in CPython
+- Most dict pattern operations either read from the existing hash table or build a new dict from it.
+- `d.get(key, default)` reads safely and does not modify the dict.
+- `d.setdefault(key, default)` may mutate the dict by inserting the key with the default value if the key is absent.
+- `d | other` creates a new merged dict, while `d.update(other)` and `d |= other` mutate the existing dict in place.
+- Inversion builds a new dict, but repeated values can overwrite each other unless you explicitly group them.
+- Grouping patterns often store nested mutable containers like lists inside the dict, so those inner containers need careful handling.
+- Dict views like `keys()`, `values()`, and `items()` are dynamic and reflect later changes to the underlying dict.
+
+#### Key Behaviors and Gotchas
+- `d[key]` raises `KeyError` if the key is missing; `d.get(key)` returns `None` or the default you provide.
+- `get()` does not insert missing keys.
+- `setdefault()` both returns a value and may insert it.
+- `in d` checks keys, not values.
+- Dict merge conflicts are resolved by the right-hand side winning.
+- Inverting a dict is only lossless when the original values are unique.
+- Chained `.get()` calls are useful for nested access, but they can blur the difference between "missing" and "present with None" if you are not careful.
+- Dict comprehensions are strong for filtering and transforming dictionaries in one pass.
+
+#### Time Complexity Notes
+- Key lookup: average O(1)
+- Key insert / update: average O(1)
+- Key membership: average O(1)
+- Merge two dicts of sizes `n` and `m`: O(n + m)
+- Invert a dict of size `n`: O(n)
+- Group items into a dict: O(n)
+- Dict comprehension over `n` items: O(n)
+- Nested lookup by depth `d`: O(d) key lookups, assuming each lookup is average O(1)
+
+#### Examples
+Example 1: Safe lookup with `get()`
+
+```python
+profile = {"name": "Aravind", "role": "learner"}
+
+print(profile.get("name"))          # Aravind
+print(profile.get("level"))         # None
+print(profile.get("level", "N/A")) # N/A
+```
+
+What to notice:
+- `get()` avoids `KeyError`.
+- The default is returned only when the key is missing.
+
+Example 2: Merge two dicts
+
+```python
+base = {"host": "localhost", "port": 5432, "debug": False}
+override = {"debug": True, "timeout": 30}
+
+merged = base | override
+
+print(merged)
+print(base)
+```
+
+What to notice:
+- `|` creates a new dict.
+- Conflicting keys take the value from the right-hand side.
+- The original `base` dict stays unchanged.
+
+Example 3: In-place merge
+
+```python
+settings = {"theme": "light", "font": 14}
+settings |= {"theme": "dark", "line_numbers": True}
+
+print(settings)
+```
+
+What to notice:
+- `|=` mutates the original dict.
+- It is the dict equivalent of update-in-place.
+
+Example 4: Invert a one-to-one dict
+
+```python
+codes = {"python": "py", "javascript": "js", "typescript": "ts"}
+inverted = {short: name for name, short in codes.items()}
+
+print(inverted)  # {'py': 'python', 'js': 'javascript', 'ts': 'typescript'}
+```
+
+What to notice:
+- Dict comprehension makes inversion concise.
+- This is safe only because the original values are unique.
+
+Example 5: Invert with grouping when values repeat
+
+```python
+employees = {
+    "ana": "engineering",
+    "bob": "engineering",
+    "chris": "design",
+}
+
+grouped = {}
+for name, team in employees.items():
+    grouped.setdefault(team, []).append(name)
+
+print(grouped)
+```
+
+What to notice:
+- A plain inversion would lose one of the engineering names.
+- `setdefault()` helps create the list the first time a group appears.
+
+Example 6: Group words by length
+
+```python
+words = ["api", "cache", "db", "queue", "ui"]
+by_length = {}
+
+for word in words:
+    by_length.setdefault(len(word), []).append(word)
+
+print(by_length)
+```
+
+What to notice:
+- Grouping is one of the most common dict patterns.
+- Module 3 will show how `defaultdict` can simplify this further.
+
+Example 7: Safe nested access
+
+```python
+payload = {
+    "user": {
+        "profile": {
+            "city": "Hyderabad"
+        }
+    }
+}
+
+city = payload.get("user", {}).get("profile", {}).get("city")
+zipcode = payload.get("user", {}).get("profile", {}).get("zipcode", "unknown")
+
+print(city)     # Hyderabad
+print(zipcode)  # unknown
+```
+
+What to notice:
+- Chained `get()` is a practical way to read nested dicts safely.
+- This avoids crashes when parts of the path are missing.
+
+Example 8: Filter a dict with a comprehension
+
+```python
+scores = {"ana": 92, "bob": 85, "chris": 88, "dina": 95}
+top_scores = {name: score for name, score in scores.items() if score >= 90}
+
+print(top_scores)  # {'ana': 92, 'dina': 95}
+```
+
+What to notice:
+- Dict comprehensions let you filter and rebuild in one pass.
+- This is often clearer than mutating a dict while iterating.
+
+Example 9: Transform dict values with a comprehension
+
+```python
+prices = {"pen": 10, "book": 100, "bag": 500}
+with_tax = {item: price * 1.18 for item, price in prices.items()}
+
+print(with_tax)
+```
+
+What to notice:
+- Dict comprehensions are also useful for transformation, not just filtering.
+- The original dict remains unchanged.
+
+#### Common Patterns
+- Use `get()` for safe reads when missing keys are expected.
+- Use `setdefault()` for simple grouping or list accumulation.
+- Use `|` or `{**a, **b}` when you want a merged copy.
+- Use `update()` or `|=` when you want in-place mutation.
+- Use dict comprehensions for filter-and-transform operations.
+- Use grouped inversion instead of plain inversion when duplicate values are possible.
+- Use chained `get()` for quick nested access when the structure is optional.
+
+#### Pitfalls to Avoid
+- Using `d[key]` when a missing key is normal and expected.
+- Assuming `get()` inserts a default into the dict.
+- Forgetting that `setdefault()` mutates the dict.
+- Inverting a dict with duplicate values and expecting no data loss.
+- Mutating a dict while iterating over it directly.
+- Using chained `get()` when you need to distinguish missing from explicit `None` more carefully.
+- Forgetting that `in d` checks only keys, not values.
+
+#### Quick Recap
+- Dict patterns solve common mapping tasks cleanly: safe read, merge, group, invert, and nested access.
+- `get()` reads safely, `setdefault()` reads and may insert.
+- Merging can be copy-based or in-place depending on the operator you choose.
+- Inversion is only truly safe when original values are unique.
+- Dict comprehensions are the cleanest way to filter and transform mappings.
+
+#### Interview Sound Bite
+For Python dict problems, I rely on a few repeatable patterns: `get()` for safe reads, `setdefault()` for grouping, merge operators for combining configs, comprehensions for filter/transform, and grouped inversion when values are not unique.
+
+#### Memory Hook
+Dict patterns = read safe, merge clean, group smart.
+
+#### Practice Questions
+1. Why is `get()` safer than `d[key]` when keys may be missing?
+2. What is the difference between `get()` and `setdefault()`?
+3. Why can plain dict inversion lose data?
+4. When should you use `|` instead of `|=`?
+5. Why is chained `get()` useful for nested dictionaries?
+6. What does `in my_dict` actually check?
+7. Why is a dict comprehension often better than mutating a dict during iteration?
+
+#### Practice Answers
+1. `get()` is safer because it returns `None` or a provided default instead of raising `KeyError` when the key is missing.
+2. `get()` only reads safely, while `setdefault()` may insert the key with a default value if it is absent.
+3. Plain dict inversion can lose data because if multiple original keys share the same value, the later one overwrites the earlier one in the inverted dict.
+4. Use `|` when you want a new merged dict and want to keep the originals unchanged. Use `|=` when you want to mutate the existing dict in place.
+5. Chained `get()` is useful because it lets you walk optional nested dictionaries without crashing if an intermediate key is missing.
+6. `in my_dict` checks whether a value is present as a key in the dictionary.
+7. A dict comprehension is often better because it builds the result cleanly in one pass and avoids the hazards of changing a dict while iterating over it.
 
 ---
 
@@ -719,7 +943,7 @@ Track recurring mistakes so we can fix patterns quickly.
 
 - [x] Topic 7 complete
 - [x] Topic 8 complete
-- [ ] Topic 9 complete
+- [x] Topic 9 complete
 - [ ] Topic 10 complete
 - [ ] Topic 11 complete
 - [ ] Module 2 revision complete
