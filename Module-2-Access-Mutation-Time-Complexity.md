@@ -934,7 +934,7 @@ Dict patterns = read safe, merge clean, group smart.
 ---
 
 ### Topic 11: Set Patterns
-Status: In Progress
+Status: Complete
 
 #### Concept in One Line
 Set patterns are the standard ways to use sets for fast membership, deduplication, overlap checks, difference analysis, and visited tracking when uniqueness matters more than order.
@@ -1181,7 +1181,7 @@ Track recurring mistakes so we can fix patterns quickly.
 - [x] Topic 8 complete
 - [x] Topic 9 complete
 - [x] Topic 10 complete
-- [ ] Topic 11 complete
-- [ ] Module 2 revision complete
+- [x] Topic 11 complete
+- [x] Module 2 revision complete
 
-Current module status: In Progress
+Current module status: Complete
