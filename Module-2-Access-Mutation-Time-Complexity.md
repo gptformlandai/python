@@ -684,7 +684,7 @@ List patterns = reshape the conveyor belt. Generators = do not load the whole be
 ---
 
 ### Topic 10: Dict Patterns
-Status: In Progress
+Status: Complete
 
 #### Concept in One Line
 Dict patterns are the standard ways to use mappings for safe lookup, merging, grouping, inversion, and nested access without turning everyday data handling into repetitive boilerplate.
@@ -934,9 +934,226 @@ Dict patterns = read safe, merge clean, group smart.
 ---
 
 ### Topic 11: Set Patterns
-Status: Not Started
+Status: In Progress
 
-Notes: Pending.
+#### Concept in One Line
+Set patterns are the standard ways to use sets for fast membership, deduplication, overlap checks, difference analysis, and visited tracking when uniqueness matters more than order.
+
+#### Mental Model
+Think of a set as a fast checkpoint gate. You are usually asking one of a few practical questions: has this item been seen, which items are common, which are missing, which are unique, or which items should be ignored as duplicates.
+
+#### Memory Behavior in CPython
+- Sets are hash tables of unique elements, so membership and updates are usually fast.
+- Converting another iterable into a set materializes unique elements into a new hash table.
+- Set operations like union, intersection, difference, and symmetric difference usually produce new sets unless you use the in-place update forms.
+- Since sets drop duplicates and do not preserve meaningful order, converting a list to a set can intentionally lose information.
+- In-place forms like `|=`, `&=`, `-=`, and `^=` mutate the original set instead of allocating a new one.
+- A set can only store hashable elements, so patterns that rely on sets require stable, hashable values.
+
+#### Key Behaviors and Gotchas
+- Use sets when membership or overlap matters more than order.
+- Plain deduplication with `set()` does not preserve insertion order.
+- `remove(x)` raises `KeyError` if `x` is absent, while `discard(x)` does nothing silently.
+- `in my_set` checks membership efficiently, which is why sets are excellent for hot lookup paths.
+- `a & b`, `a | b`, `a - b`, and `a ^ b` are concise and expressive for overlap problems.
+- Operators expect set operands, while methods like `intersection()` can accept broader iterables.
+- `isdisjoint()` is a useful overlooked pattern when you only need to know whether two sets share anything.
+- Sets are one of the best tools for visited tracking in graph traversal, duplicate suppression, and blacklist/whitelist checks.
+
+#### Time Complexity Notes
+- Membership test: average O(1)
+- Add element: average O(1)
+- Remove / discard: average O(1)
+- Convert iterable to set: O(n)
+- Union: O(len(a) + len(b))
+- Intersection: average O(min(len(a), len(b)))
+- Difference: average O(len(a))
+- Symmetric difference: O(len(a) + len(b))
+- Subset / superset checks: proportional to the set sizes involved
+
+#### Examples
+Example 1: Fast membership with a set
+
+```python
+blocked = {"spam", "ads", "promo"}
+
+word = "promo"
+print(word in blocked)  # True
+```
+
+What to notice:
+- This is the core strength of a set.
+- Membership stays fast even as the collection grows.
+
+Example 2: Plain deduplication
+
+```python
+tags = ["python", "api", "python", "data", "api"]
+unique_tags = set(tags)
+
+print(unique_tags)
+```
+
+What to notice:
+- Duplicates disappear automatically.
+- The resulting order should not be used as logic.
+
+Example 3: Find missing numbers
+
+```python
+expected = set(range(1, 11))
+submitted = {1, 2, 4, 5, 7, 8, 10}
+
+missing = expected - submitted
+print(missing)  # {3, 6, 9}
+```
+
+What to notice:
+- Difference is a clean missing-items pattern.
+- This is a common interview and data-validation use case.
+
+Example 4: Common friends pattern
+
+```python
+alice = {"bob", "chris", "dina", "eva"}
+bob = {"alice", "chris", "eva", "frank"}
+
+common = alice & bob
+print(common)  # {'chris', 'eva'}
+```
+
+What to notice:
+- Intersection answers overlap questions directly.
+- No manual nested loops are needed.
+
+Example 5: Unique words in a document
+
+```python
+text = "Python data structures with python sets and data patterns"
+unique_words = set(word.lower() for word in text.split())
+
+print(unique_words)
+```
+
+What to notice:
+- Sets are ideal when you care about vocabulary uniqueness.
+- Normalization like `.lower()` matters before insertion.
+
+Example 6: Use `discard()` when absence is acceptable
+
+```python
+active = {"ana", "bob", "chris"}
+
+active.discard("dina")
+print(active)  # {'ana', 'bob', 'chris'}
+```
+
+What to notice:
+- `discard()` is safer than `remove()` when missing values are normal.
+- This avoids noisy exception handling.
+
+Example 7: Track visited nodes
+
+```python
+graph = {
+    "A": ["B", "C"],
+    "B": ["D"],
+    "C": ["D"],
+    "D": [],
+}
+
+visited = set()
+stack = ["A"]
+
+while stack:
+    node = stack.pop()
+    if node in visited:
+        continue
+    visited.add(node)
+    stack.extend(graph[node])
+
+print(visited)  # {'A', 'B', 'C', 'D'}
+```
+
+What to notice:
+- Sets are the natural structure for visited tracking.
+- Membership plus insertion is exactly the workload they are built for.
+
+Example 8: `isdisjoint()` for overlap checks
+
+```python
+allowed = {"python", "sql", "docker"}
+forbidden = {"java", "rust"}
+
+print(allowed.isdisjoint(forbidden))  # True
+```
+
+What to notice:
+- `isdisjoint()` answers a yes/no overlap question directly.
+- It is cleaner than computing a whole intersection when you only need a boolean.
+
+Example 9: Symmetric difference for values present in exactly one set
+
+```python
+team_a = {"ana", "bob", "chris"}
+team_b = {"bob", "dina", "eva"}
+
+only_one_team = team_a ^ team_b
+print(only_one_team)  # {'ana', 'chris', 'dina', 'eva'}
+```
+
+What to notice:
+- Symmetric difference removes common elements and keeps non-overlapping ones.
+- This is useful when finding mismatches or drift.
+
+#### Common Patterns
+- Use a set for repeated membership checks.
+- Use `set(iterable)` for fast order-insensitive deduplication.
+- Use difference to find missing items.
+- Use intersection to find common items.
+- Use symmetric difference to find mismatches.
+- Use `discard()` when deletion should be safe even if the item is absent.
+- Use a set called `visited` in traversal or duplicate-suppression problems.
+- Use `isdisjoint()` for fast overlap checks when you only need a boolean.
+
+#### Pitfalls to Avoid
+- Using a set when insertion order matters to the result.
+- Expecting duplicates to survive after conversion to a set.
+- Using `remove()` when missing values are normal.
+- Putting unhashable values like lists or dicts into a set.
+- Converting to a set too early when the original ordering is still needed later.
+- Computing a full intersection when all you needed was an overlap boolean.
+
+#### Quick Recap
+- Set patterns are about uniqueness and fast membership.
+- Difference, intersection, union, and symmetric difference cover most practical overlap questions.
+- Sets are excellent for visited tracking and blacklist/whitelist logic.
+- Deduplication with sets is simple, but it discards ordering.
+- Choose in-place update or new-set creation intentionally.
+
+#### Interview Sound Bite
+For Python set problems, I think in a few reusable patterns: membership, deduplication, overlap, missing values, mismatches, and visited tracking, because sets turn those into clean, average O(1) operations and concise algebra.
+
+#### Memory Hook
+Set patterns = seen, common, missing, unique.
+
+#### Practice Questions
+1. Why is a set better than a list for repeated membership checks?
+2. When should you use `discard()` instead of `remove()`?
+3. What is the difference between `a - b` and `a ^ b`?
+4. Why can converting a list to a set be dangerous in some workflows?
+5. When is `isdisjoint()` better than computing `a & b`?
+6. Why are sets ideal for visited tracking?
+7. What kind of values cannot be stored in a set?
+
+#### Practice Answers
+1. A set is better because membership is usually average O(1), while a list usually scans linearly through values.
+2. Use `discard()` when the value may or may not be present and you do not want a missing value to raise `KeyError`.
+3. `a - b` keeps values only in `a` that are not in `b`, while `a ^ b` keeps values that appear in exactly one of the two sets.
+4. Converting a list to a set can be dangerous because it removes duplicates and loses meaningful ordering information.
+5. `isdisjoint()` is better when you only need to know whether the sets overlap at all, because it expresses the intent more directly than building a full intersection result.
+6. Sets are ideal for visited tracking because the core workflow is repeated membership checking and marking values as seen.
+7. Unhashable values such as lists, dicts, and sets cannot be stored directly in a set.
 
 ---
 
@@ -963,7 +1180,7 @@ Track recurring mistakes so we can fix patterns quickly.
 - [x] Topic 7 complete
 - [x] Topic 8 complete
 - [x] Topic 9 complete
-- [ ] Topic 10 complete
+- [x] Topic 10 complete
 - [ ] Topic 11 complete
 - [ ] Module 2 revision complete
 
