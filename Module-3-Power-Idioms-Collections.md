@@ -38,7 +38,7 @@ Estimated total: ~4 hours 30 min
 ## Topic Notes
 
 ### Topic 12: Comprehensions vs Loops vs map/filter
-Status: In Progress
+Status: Complete
 
 #### Concept in One Line
 Comprehensions, loops, and map/filter solve the same broad class of transformation problems, but they differ in readability, eagerness, and how well they express the shape of the work.
@@ -273,9 +273,212 @@ Comprehension = concise build. Loop = explicit control. map/filter = lazy pipeli
 ---
 
 ### Topic 13: Dict & Set Comprehensions
-Status: Not Started
+Status: In Progress
 
-Notes: Pending.
+#### Concept in One Line
+Dict and set comprehensions are concise ways to build mappings and unique-value collections in one readable pass, usually replacing small loops used for transform-and-filter work.
+
+#### Mental Model
+Think of them as list comprehensions with a different target container.
+- A dict comprehension answers: for each item, what key and value should I store?
+- A set comprehension answers: for each item, what unique normalized value should I keep?
+
+#### Memory Behavior in CPython
+- Dict comprehensions build a new dict eagerly.
+- Set comprehensions build a new set eagerly.
+- Unlike generator expressions, neither of them is lazy.
+- Dict comprehensions insert key-value pairs into a hash table as they iterate.
+- Set comprehensions insert produced values into a hash table and automatically collapse duplicates.
+- If a dict comprehension produces the same key more than once, the last value wins.
+- Since both target hash-based containers, produced keys or set elements must be hashable.
+
+#### Key Behaviors and Gotchas
+- Use a dict comprehension when the output is naturally key-value shaped.
+- Use a set comprehension when you care about uniqueness.
+- Dict comprehensions can transform, filter, or invert data in one pass.
+- Set comprehensions are ideal for normalization tasks like lowercasing and deduplicating words.
+- Repeated dict keys overwrite earlier values.
+- Repeated set values vanish automatically.
+- Complex nested comprehensions can become unreadable fast; clarity still wins.
+- If order or duplicates matter in the final result, a set comprehension is the wrong tool.
+
+#### Time Complexity Notes
+- Dict comprehension over n items: O(n)
+- Set comprehension over n items: O(n)
+- Filtering during comprehension: still O(n)
+- Hash insertion per produced item: average O(1)
+- Extra memory for the built dict or set: O(n)
+
+#### Examples
+Example 1: Dict comprehension for simple transformation
+
+```python
+nums = [1, 2, 3, 4]
+squares = {num: num * num for num in nums}
+
+print(squares)  # {1: 1, 2: 4, 3: 9, 4: 16}
+```
+
+What to notice:
+- The left side of the colon is the key.
+- The right side of the colon is the value.
+
+Example 2: Dict comprehension with filtering
+
+```python
+scores = {"ana": 92, "bob": 85, "chris": 88, "dina": 95}
+top_scores = {name: score for name, score in scores.items() if score >= 90}
+
+print(top_scores)  # {'ana': 92, 'dina': 95}
+```
+
+What to notice:
+- Filtering sits at the end of the comprehension.
+- This avoids building the result with manual conditionals and assignment.
+
+Example 3: Invert a dict with a comprehension
+
+```python
+codes = {"python": "py", "javascript": "js", "typescript": "ts"}
+inverted = {short: name for name, short in codes.items()}
+
+print(inverted)  # {'py': 'python', 'js': 'javascript', 'ts': 'typescript'}
+```
+
+What to notice:
+- Swapping key and value is concise.
+- This only works safely when original values are unique.
+
+Example 4: Last key wins in dict comprehensions
+
+```python
+pairs = [("a", 1), ("b", 2), ("a", 99)]
+data = {key: value for key, value in pairs}
+
+print(data)  # {'a': 99, 'b': 2}
+```
+
+What to notice:
+- Duplicate keys do not raise an error.
+- The later assignment overwrites the earlier one.
+
+Example 5: Normalize keys with a dict comprehension
+
+```python
+raw = {" Name ": "Aravind", " Role ": "Learner", " CITY ": "Hyderabad"}
+normalized = {key.strip().lower(): value for key, value in raw.items()}
+
+print(normalized)  # {'name': 'Aravind', 'role': 'Learner', 'city': 'Hyderabad'}
+```
+
+What to notice:
+- Comprehensions are great for data cleanup.
+- The original dict stays untouched.
+
+Example 6: Set comprehension for even squares
+
+```python
+nums = [1, 2, 3, 4, 5, 6]
+even_squares = {num * num for num in nums if num % 2 == 0}
+
+print(even_squares)  # {4, 16, 36}
+```
+
+What to notice:
+- Set comprehension uses braces without `key: value`.
+- It behaves like a unique-value builder.
+
+Example 7: Unique normalized words
+
+```python
+text = "Python python Data DATA structures Structures"
+unique_words = {word.lower() for word in text.split()}
+
+print(unique_words)  # {'python', 'data', 'structures'}
+```
+
+What to notice:
+- Set comprehensions are ideal for deduplicate-and-normalize tasks.
+- Repeated values collapse naturally.
+
+Example 8: Build a lookup set from records
+
+```python
+users = [
+    {"id": 1, "active": True},
+    {"id": 2, "active": False},
+    {"id": 3, "active": True},
+]
+
+active_ids = {user["id"] for user in users if user["active"]}
+print(active_ids)  # {1, 3}
+```
+
+What to notice:
+- This is a common real-world pattern.
+- Set comprehensions are great when the final result is a membership structure.
+
+Example 9: Dict comprehension vs generator expression
+
+```python
+nums = [1, 2, 3]
+dict_comp = {num: num * num for num in nums}
+gen_expr = ((num, num * num) for num in nums)
+
+print(dict_comp)       # {1: 1, 2: 4, 3: 9}
+print(dict(gen_expr))  # {1: 1, 2: 4, 3: 9}
+```
+
+What to notice:
+- The dict comprehension builds immediately.
+- The generator expression stays lazy until passed into `dict()`.
+
+#### Common Patterns
+- Use dict comprehensions for transform-and-filter work on mappings.
+- Use dict comprehensions to invert one-to-one mappings.
+- Use dict comprehensions to normalize keys or values.
+- Use set comprehensions for deduplication plus normalization.
+- Use set comprehensions to build fast membership structures.
+- Reach for a normal loop when the comprehension starts getting too dense.
+
+#### Pitfalls to Avoid
+- Using a set comprehension when duplicates or ordering matter.
+- Forgetting that dict key collisions overwrite earlier values.
+- Building unreadable nested comprehensions just to stay concise.
+- Producing unhashable dict keys or set elements.
+- Assuming dict or set comprehensions are lazy like generator expressions.
+- Using a comprehension when a named multi-step loop would communicate intent better.
+
+#### Quick Recap
+- Dict comprehensions build mappings; set comprehensions build unique-value collections.
+- Both are eager, not lazy.
+- Dict comprehensions are strong for transformation, filtering, inversion, and normalization.
+- Set comprehensions are strong for uniqueness, cleanup, and membership prep.
+- Choose them when they improve clarity, not just to make code shorter.
+
+#### Interview Sound Bite
+I use dict comprehensions when the output is naturally key-value shaped and set comprehensions when I need unique normalized values, but I switch back to a normal loop as soon as the expression stops being easy to read.
+
+#### Memory Hook
+Dict comprehension = map shape. Set comprehension = unique shape.
+
+#### Practice Questions
+1. What is the structural difference between a dict comprehension and a set comprehension?
+2. What happens if a dict comprehension produces the same key twice?
+3. Why is a set comprehension useful for word normalization tasks?
+4. Why are dict and set comprehensions not considered lazy?
+5. When should you prefer a normal loop over a comprehension?
+6. Why can a set comprehension not store lists directly?
+7. What is the difference between `{x for x in nums}` and `(x for x in nums)`?
+
+#### Practice Answers
+1. A dict comprehension produces `key: value` pairs, while a set comprehension produces a single value per iteration and stores only unique results.
+2. If the same key is produced twice, the later value overwrites the earlier one.
+3. A set comprehension is useful because it can transform words, such as lowercasing them, while automatically removing duplicates.
+4. They are not lazy because they build the full dict or set immediately as the comprehension runs.
+5. Prefer a normal loop when the logic needs multiple steps, clearer debugging, side handling, or would make the comprehension too dense to read comfortably.
+6. A set comprehension cannot store lists directly because set elements must be hashable, and lists are mutable and unhashable.
+7. `{x for x in nums}` is a set comprehension that builds a set immediately, while `(x for x in nums)` is a generator expression that yields values lazily.
 
 ---
 
