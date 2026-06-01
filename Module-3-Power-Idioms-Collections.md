@@ -273,7 +273,7 @@ Comprehension = concise build. Loop = explicit control. map/filter = lazy pipeli
 ---
 
 ### Topic 13: Dict & Set Comprehensions
-Status: In Progress
+Status: Complete
 
 #### Concept in One Line
 Dict and set comprehensions are concise ways to build mappings and unique-value collections in one readable pass, usually replacing small loops used for transform-and-filter work.
@@ -483,9 +483,232 @@ Dict comprehension = map shape. Set comprehension = unique shape.
 ---
 
 ### Topic 14: Unpacking
-Status: Not Started
+Status: In Progress
 
-Notes: Pending.
+#### Concept in One Line
+Unpacking assigns items from an iterable or mapping directly into named variables, making extraction, argument passing, and reshaping cleaner than manual indexing.
+
+#### Mental Model
+Think of unpacking as opening a box and placing each item straight into labeled slots. Instead of saying "give me item 0, item 1, item 2," you describe the shape you expect and let Python distribute the contents for you.
+
+#### Memory Behavior in CPython
+- Basic unpacking binds names to existing object references; it does not deep-copy the values.
+- Sequence unpacking itself is mostly about assignment, not duplication.
+- Starred unpacking like `first, *middle, last = data` creates a new list object for the starred part.
+- Nested unpacking follows the same rule recursively: names are rebound to the existing contained objects.
+- In function calls, `*iterable` expands positional arguments and `**mapping` expands keyword arguments before the function receives them.
+- Because unpacking usually just rebinds references, it is often lightweight unless a starred target or call expansion requires building intermediate argument structures.
+
+#### Key Behaviors and Gotchas
+- The number of target variables must match the number of values unless you use a starred target.
+- A single starred target can absorb the remaining items.
+- The starred target is always a list in assignment context, even if the source is a tuple or string.
+- `_` is a common convention for values you intentionally ignore.
+- Nested unpacking works only if the inner shape matches what you describe.
+- `*args` collects extra positional arguments in function definitions.
+- `**kwargs` collects extra keyword arguments in function definitions.
+- `*iterable` and `**mapping` also work in function calls and literals, not just in assignment.
+
+#### Time Complexity Notes
+- Fixed-size unpacking of k items: O(k)
+- Starred unpacking over n items: O(n), because Python must collect the starred portion
+- Nested unpacking: proportional to the total number of unpacked elements
+- Function call unpacking with `*args` / `**kwargs`: proportional to the number of expanded arguments
+- The main cost is usually linear in the amount of data being unpacked, not constant
+
+#### Examples
+Example 1: Basic sequence unpacking
+
+```python
+point = (10, 20)
+x, y = point
+
+print(x, y)  # 10 20
+```
+
+What to notice:
+- This is the simplest unpacking shape.
+- It is clearer than `point[0]` and `point[1]` when the structure is fixed.
+
+Example 2: Swap values without a temporary variable
+
+```python
+a = 5
+b = 9
+
+a, b = b, a
+print(a, b)  # 9 5
+```
+
+What to notice:
+- Python packs values on the right and unpacks on the left.
+- This is one of the most common tuple-unpacking idioms.
+
+Example 3: Ignore values you do not need
+
+```python
+record = (101, "Aravind", "Python", "active")
+user_id, name, _, status = record
+
+print(user_id, name, status)  # 101 Aravind active
+```
+
+What to notice:
+- `_` signals intentionally ignored data.
+- The shape still has to match.
+
+Example 4: Starred unpacking for first, middle, last
+
+```python
+nums = [1, 2, 3, 4, 5, 6]
+first, *middle, last = nums
+
+print(first)   # 1
+print(middle)  # [2, 3, 4, 5]
+print(last)    # 6
+```
+
+What to notice:
+- The starred target captures the remaining values.
+- The starred result is a list.
+
+Example 5: Nested unpacking
+
+```python
+data = ("ana", (92, 88))
+name, (math_score, science_score) = data
+
+print(name, math_score, science_score)  # ana 92 88
+```
+
+What to notice:
+- The left-hand side describes the nested shape.
+- Python expects the inner structure to match.
+
+Example 6: Unpack a CSV-style row
+
+```python
+row = "101,Aravind,Python,active".split(",")
+user_id, name, track, status = row
+
+print(user_id, name, track, status)
+```
+
+What to notice:
+- Unpacking is practical for tabular or fixed-format data.
+- This is cleaner than indexing each position manually.
+
+Example 7: Use `*` in a function call
+
+```python
+def add(a, b, c):
+    return a + b + c
+
+
+values = [10, 20, 30]
+print(add(*values))  # 60
+```
+
+What to notice:
+- `*values` expands the iterable into positional arguments.
+- The function sees separate arguments, not a list.
+
+Example 8: Use `**` in a function call
+
+```python
+def greet(name, role):
+    return f"{name} is a {role}"
+
+
+info = {"name": "Aravind", "role": "learner"}
+print(greet(**info))  # Aravind is a learner
+```
+
+What to notice:
+- `**info` expands dict keys as keyword arguments.
+- The dict keys must match parameter names.
+
+Example 9: `*args` and `**kwargs` in function definitions
+
+```python
+def show(*args, **kwargs):
+    print(args)
+    print(kwargs)
+
+
+show(1, 2, 3, name="Aravind", topic="Python")
+```
+
+What to notice:
+- `args` becomes a tuple of extra positional values.
+- `kwargs` becomes a dict of extra keyword values.
+
+Example 10: Merge iterables and mappings with unpacking
+
+```python
+nums1 = [1, 2]
+nums2 = [3, 4]
+merged_list = [*nums1, *nums2]
+
+config1 = {"host": "localhost", "port": 8000}
+config2 = {"debug": True}
+merged_dict = {**config1, **config2}
+
+print(merged_list)  # [1, 2, 3, 4]
+print(merged_dict)  # {'host': 'localhost', 'port': 8000, 'debug': True}
+```
+
+What to notice:
+- Unpacking also works inside list and dict literals.
+- This is a clean composition pattern for small data structures.
+
+#### Common Patterns
+- Use unpacking for fixed-shape records.
+- Use starred unpacking when you need first/rest/last style extraction.
+- Use nested unpacking when the input structure is predictable.
+- Use `*iterable` to pass positional values into a function.
+- Use `**mapping` to pass keyword data into a function.
+- Use `*args` and `**kwargs` in flexible function signatures.
+- Use unpacking in literals for quick merges and reshaping.
+
+#### Pitfalls to Avoid
+- Unpacking the wrong number of items without a starred target.
+- Assuming starred unpacking preserves the source container type.
+- Using unpacking when the input shape is uncertain or inconsistent.
+- Overusing `_` so much that the code hides important structure.
+- Expanding `**mapping` with keys that do not match the function parameter names.
+- Forgetting that nested unpacking will fail if the inner shape does not match.
+
+#### Quick Recap
+- Unpacking assigns iterable contents directly into variables.
+- Starred unpacking absorbs the remaining items and produces a list.
+- Nested unpacking works when the data shape matches your target pattern.
+- `*` and `**` also work in function calls and literal merges.
+- Use unpacking when the structure is known and the code becomes clearer, not just shorter.
+
+#### Interview Sound Bite
+I use unpacking whenever the data has a predictable shape, because it makes extraction and function calls more readable than manual indexing, and starred unpacking gives me a clean way to capture the rest when the middle is flexible.
+
+#### Memory Hook
+Unpacking = describe the shape, let Python distribute.
+
+#### Practice Questions
+1. What is the difference between basic unpacking and starred unpacking?
+2. Why does the starred target become a list?
+3. When is unpacking better than manual indexing?
+4. What is the difference between `*args` in a definition and `*values` in a call?
+5. Why can nested unpacking fail even when the outer structure looks correct?
+6. What does `**mapping` require to work in a function call?
+7. What is the difference between `{**a, **b}` and `a | b` at a high level?
+
+#### Practice Answers
+1. Basic unpacking requires the number of variables to match the number of values exactly, while starred unpacking lets one target capture the remaining values.
+2. The starred target becomes a list because Python materializes the variable-length remainder in a mutable sequence for assignment.
+3. Unpacking is better when the structure is fixed and meaningful, because the variable names communicate intent more clearly than numeric indexes.
+4. In a definition, `*args` collects extra positional arguments into a tuple. In a call, `*values` expands an iterable into separate positional arguments.
+5. Nested unpacking can fail because Python expects the inner iterable shapes to match exactly what the left-hand pattern describes.
+6. `**mapping` requires a mapping whose keys are strings matching the target function's parameter names.
+7. Both merge mappings, but `{**a, **b}` uses unpacking syntax inside a dict literal, while `a | b` is the dedicated dict merge operator introduced later; both prefer right-hand values on conflicts.
 
 ---
 
@@ -544,8 +767,8 @@ Track recurring mistakes so we can fix patterns quickly.
 
 ## Module 3 Progress Tracker
 
-- [ ] Topic 12 complete
-- [ ] Topic 13 complete
+- [x] Topic 12 complete
+- [x] Topic 13 complete
 - [ ] Topic 14 complete
 - [ ] Topic 15 complete
 - [ ] Topic 16 complete
