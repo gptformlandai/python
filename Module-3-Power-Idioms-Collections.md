@@ -503,6 +503,8 @@ Think of unpacking as opening a box and placing each item straight into labeled 
 - The number of target variables must match the number of values unless you use a starred target.
 - A single starred target can absorb the remaining items.
 - The starred target is always a list in assignment context, even if the source is a tuple or string.
+- In assignment targets and function definitions, starred names usually collect remaining values.
+- In function calls and literals, `*` and `**` usually expand values into the surrounding context.
 - `_` is a common convention for values you intentionally ignore.
 - Nested unpacking works only if the inner shape matches what you describe.
 - `*args` collects extra positional arguments in function definitions.
@@ -662,10 +664,46 @@ What to notice:
 - Unpacking also works inside list and dict literals.
 - This is a clean composition pattern for small data structures.
 
+Example 11: Left side usually collects, right side usually expands
+
+```python
+nums = [1, 2, 3, 4]
+
+first, *rest = nums
+copied = [*nums]
+
+print(first)   # 1
+print(rest)    # [2, 3, 4]
+print(copied)  # [1, 2, 3, 4]
+```
+
+What to notice:
+- On the left in assignment, `*rest` collects the remaining values.
+- On the right in a list literal, `*nums` expands the iterable's items into the new list.
+- So your rule is close, but the clearer rule is: left-side starred targets collect, right-side stars expand.
+
+Example 12: Why `[*nums1, *nums2]` is not `[[1, 2], [3, 4]]`
+
+```python
+nums1 = [1, 2]
+nums2 = [3, 4]
+
+print([nums1, nums2])       # [[1, 2], [3, 4]]
+print([*nums1, *nums2])     # [1, 2, 3, 4]
+print([[*nums1], [*nums2]]) # [[1, 2], [3, 4]]
+```
+
+What to notice:
+- `[nums1, nums2]` puts two list objects inside a new outer list.
+- `*nums1` does not insert the list object itself; it inserts each element of that list into the surrounding literal.
+- That is why `[*nums1, *nums2]` becomes one flat list with four items.
+- If you want nested lists, do not star them at that level.
+
 #### Common Patterns
 - Use unpacking for fixed-shape records.
 - Use starred unpacking when you need first/rest/last style extraction.
 - Use nested unpacking when the input structure is predictable.
+- Remember: starred targets collect on the left; starred expressions expand on the right.
 - Use `*iterable` to pass positional values into a function.
 - Use `**mapping` to pass keyword data into a function.
 - Use `*args` and `**kwargs` in flexible function signatures.
@@ -684,6 +722,7 @@ What to notice:
 - Starred unpacking absorbs the remaining items and produces a list.
 - Nested unpacking works when the data shape matches your target pattern.
 - `*` and `**` also work in function calls and literal merges.
+- `[nums1, nums2]` nests lists, while `[*nums1, *nums2]` expands their contents into one list.
 - Use unpacking when the structure is known and the code becomes clearer, not just shorter.
 
 #### Interview Sound Bite
@@ -700,6 +739,7 @@ Unpacking = describe the shape, let Python distribute.
 5. Why can nested unpacking fail even when the outer structure looks correct?
 6. What does `**mapping` require to work in a function call?
 7. What is the difference between `{**a, **b}` and `a | b` at a high level?
+8. Why does `[nums1, nums2]` differ from `[*nums1, *nums2]`?
 
 #### Practice Answers
 1. Basic unpacking requires the number of variables to match the number of values exactly, while starred unpacking lets one target capture the remaining values.
@@ -709,6 +749,7 @@ Unpacking = describe the shape, let Python distribute.
 5. Nested unpacking can fail because Python expects the inner iterable shapes to match exactly what the left-hand pattern describes.
 6. `**mapping` requires a mapping whose keys are strings matching the target function's parameter names.
 7. Both merge mappings, but `{**a, **b}` uses unpacking syntax inside a dict literal, while `a | b` is the dedicated dict merge operator introduced later; both prefer right-hand values on conflicts.
+8. `[nums1, nums2]` inserts two list objects into a new list, while `[*nums1, *nums2]` expands the elements of each list into the surrounding list literal, producing one flat list.
 
 ---
 
@@ -753,6 +794,7 @@ Use this section whenever you ask a question during Module 3.
 | # | Date | Topic | Your Doubt | Answer Summary | Action |
 |---|------|-------|------------|----------------|--------|
 | 1 | 2026-05-28 | - | - | - | - |
+| 2 | 2026-06-01 | Topic 14: Unpacking | Is it correct to think `*` or `**` on the left packs and on the right unpacks? Why does `[*nums1, *nums2]` produce `[1, 2, 3, 4]` instead of `[[1, 2], [3, 4]]`? | Better rule: starred targets on the left usually collect remaining values, while starred expressions on the right usually expand values into the surrounding call or literal. `[nums1, nums2]` nests two list objects, but `[*nums1, *nums2]` expands both lists element by element into one outer list. | Remember: left starred target collects, right starred expression expands. |
 
 ---
 
