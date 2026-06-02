@@ -483,7 +483,7 @@ Dict comprehension = map shape. Set comprehension = unique shape.
 ---
 
 ### Topic 14: Unpacking
-Status: In Progress
+Status: Complete
 
 #### Concept in One Line
 Unpacking assigns items from an iterable or mapping directly into named variables, making extraction, argument passing, and reshaping cleaner than manual indexing.
@@ -754,9 +754,263 @@ Unpacking = describe the shape, let Python distribute.
 ---
 
 ### Topic 15: collections.Counter
-Status: Not Started
+Status: In Progress
 
-Notes: Pending.
+#### Concept in One Line
+`collections.Counter` is a dict-like tool built for counting hashable items, making frequency analysis much cleaner than manual tally code.
+
+#### Mental Model
+Think of `Counter` as a tally sheet that updates itself.
+- Every unique item becomes a key.
+- Every time the item appears, its count goes up.
+- Instead of writing `if key in counts`, `Counter` handles the bookkeeping for you.
+
+#### Memory Behavior in CPython
+- `Counter` is a subclass of `dict`, so it stores keys in a hash table with associated count values.
+- Keys are references to the original hashable objects; the items themselves are not copied deeply.
+- Counts are usually integers, but `Counter` can technically store other numeric values too.
+- Building a `Counter` from an iterable updates counts one item at a time.
+- Accessing a missing key returns `0` instead of raising `KeyError`.
+- Keys with zero or negative counts can still remain in the counter until you delete them or clean them up.
+- Methods like `most_common()` materialize a result list, while `elements()` returns an iterator over repeated keys.
+
+#### Key Behaviors and Gotchas
+- Use `Counter(iterable)` to count items from a string, list, tuple, or any iterable.
+- Use `Counter(mapping)` when you already have counts.
+- Missing keys read as `0`, which is one of `Counter`'s biggest conveniences.
+- `update()` adds counts; it does not replace them.
+- `subtract()` subtracts counts and can produce zero or negative values.
+- A key with count `0` is not automatically removed.
+- `counter["x"] == 0` does not mean `"x"` is stored as a key.
+- `most_common(n)` is a quick way to get top frequencies.
+- `elements()` repeats each key by its positive integer count and ignores zero or negative counts.
+- `+counter` is a neat cleanup trick that removes zero and negative counts.
+- `Counter` only works for hashable elements, just like dict keys and set elements.
+
+#### Time Complexity Notes
+- Building a counter from `n` items: O(n)
+- Looking up one item's count: average O(1)
+- Incrementing or decrementing one item's count: average O(1)
+- `update()` or `subtract()` over `n` incoming items: O(n)
+- `most_common()` over `m` unique keys: roughly O(m log m) for a full ranking
+- Extra memory: O(m), where `m` is the number of unique items
+
+#### Examples
+Example 1: Count characters in a string
+
+```python
+from collections import Counter
+
+text = "banana"
+counts = Counter(text)
+
+print(counts)       # Counter({'a': 3, 'n': 2, 'b': 1})
+print(counts["a"])  # 3
+```
+
+What to notice:
+- Each unique character becomes a key.
+- The count tells you how often that character appeared.
+
+Example 2: Count words in a list
+
+```python
+from collections import Counter
+
+words = ["python", "data", "python", "lists", "data", "python"]
+word_counts = Counter(words)
+
+print(word_counts)           # Counter({'python': 3, 'data': 2, 'lists': 1})
+print(word_counts["python"]) # 3
+print(word_counts["dict"])   # 0
+```
+
+What to notice:
+- Missing keys return `0` instead of raising an error.
+- This removes a lot of manual counting boilerplate.
+
+Example 3: Compare manual counting vs `Counter`
+
+```python
+nums = [1, 2, 2, 3, 3, 3]
+
+manual = {}
+for num in nums:
+    manual[num] = manual.get(num, 0) + 1
+
+from collections import Counter
+counter_version = Counter(nums)
+
+print(manual)          # {1: 1, 2: 2, 3: 3}
+print(counter_version) # Counter({3: 3, 2: 2, 1: 1})
+```
+
+What to notice:
+- `Counter` expresses the intent directly.
+- It is essentially the standard-library version of a manual frequency dict pattern.
+
+Example 4: Get the most common items
+
+```python
+from collections import Counter
+
+votes = ["A", "B", "A", "C", "A", "B", "B", "A"]
+vote_counts = Counter(votes)
+
+print(vote_counts.most_common(2))  # [('A', 4), ('B', 3)]
+```
+
+What to notice:
+- `most_common(n)` is perfect for top-k frequency tasks.
+- The result is a list of `(item, count)` tuples.
+
+Example 5: Update counts incrementally
+
+```python
+from collections import Counter
+
+counts = Counter()
+counts.update(["python", "python", "sql"])
+counts.update(["sql", "ml"])
+
+print(counts)  # Counter({'python': 2, 'sql': 2, 'ml': 1})
+```
+
+What to notice:
+- `update()` adds to existing counts.
+- This is useful for streaming or batch-by-batch tallying.
+
+Example 6: Subtract counts and keep track of shortages
+
+```python
+from collections import Counter
+
+inventory = Counter({"pen": 10, "notebook": 5})
+sold = Counter({"pen": 4, "notebook": 7})
+
+inventory.subtract(sold)
+print(inventory)  # Counter({'pen': 6, 'notebook': -2})
+```
+
+What to notice:
+- `subtract()` can create negative counts.
+- Negative values can be useful when you want to represent shortages or deficits.
+
+Example 7: Multiset-style operations
+
+```python
+from collections import Counter
+
+basket1 = Counter(["apple", "apple", "banana", "orange"])
+basket2 = Counter(["apple", "banana", "banana", "grape"])
+
+print(basket1 + basket2)  # Counter({'apple': 3, 'banana': 3, 'orange': 1, 'grape': 1})
+print(basket1 - basket2)  # Counter({'apple': 1, 'orange': 1})
+print(basket1 & basket2)  # Counter({'apple': 1, 'banana': 1})
+print(basket1 | basket2)  # Counter({'apple': 2, 'banana': 2, 'orange': 1, 'grape': 1})
+```
+
+What to notice:
+- `+` adds counts.
+- `-` keeps only positive results.
+- `&` keeps minimum shared counts.
+- `|` keeps maximum counts.
+
+Example 8: Expand back into repeated elements
+
+```python
+from collections import Counter
+
+counts = Counter({"a": 3, "b": 1, "c": 0})
+
+print(list(counts.elements()))  # ['a', 'a', 'a', 'b']
+```
+
+What to notice:
+- `elements()` expands the multiset back into repeated items.
+- Zero and negative counts are ignored.
+
+Example 9: Clean out zero and negative counts
+
+```python
+from collections import Counter
+
+counts = Counter({"a": 3, "b": 0, "c": -2})
+cleaned = +counts
+
+print(counts)   # Counter({'a': 3, 'b': 0, 'c': -2})
+print(cleaned)  # Counter({'a': 3})
+```
+
+What to notice:
+- `+counter` is a compact cleanup idiom.
+- It keeps only keys with positive counts.
+
+Example 10: Check if two strings are anagrams
+
+```python
+from collections import Counter
+
+word1 = "listen"
+word2 = "silent"
+
+print(Counter(word1) == Counter(word2))  # True
+```
+
+What to notice:
+- `Counter` is excellent for comparing frequency profiles.
+- This is a common interview and practice problem pattern.
+
+#### Common Patterns
+- Use `Counter` for word frequency, character frequency, and event tallies.
+- Use `most_common()` for leaderboards and top-k questions.
+- Use `update()` when data arrives in chunks.
+- Use `subtract()` when comparing demand vs supply or sold vs available.
+- Use `Counter(a) == Counter(b)` for anagram-style frequency comparison.
+- Use `&` and `|` when you want multiset intersection and union behavior.
+- Use `+counter` to clean up non-positive counts before final output.
+
+#### Pitfalls to Avoid
+- Assuming `Counter` works with unhashable items like lists.
+- Forgetting that missing keys return `0`, which is different from normal dict access.
+- Thinking a zero count means the key must exist in the underlying mapping.
+- Assuming `subtract()` removes keys automatically when counts reach zero.
+- Forgetting that `most_common()` materializes a ranked list.
+- Using `Counter` when a simple running integer or boolean flag would be enough.
+
+#### Quick Recap
+- `Counter` is a dict-like frequency tool for hashable items.
+- Missing keys return `0`, which simplifies counting code.
+- `update()` adds counts; `subtract()` can create zero or negative counts.
+- `most_common()` gives ranked frequency results.
+- `Counter` also supports multiset-style arithmetic like `+`, `-`, `&`, and `|`.
+- Zero and negative counts may stick around until you clean them up.
+
+#### Interview Sound Bite
+When I need frequency analysis in Python, I reach for `collections.Counter` because it removes manual tally boilerplate, gives me clean top-k queries through `most_common()`, and supports multiset-style operations for comparing inventories or counts.
+
+#### Memory Hook
+`Counter` = a dict that counts for you.
+
+#### Practice Questions
+1. Why is `Counter` often better than a normal dict for frequency problems?
+2. What does `counter["missing"]` return for a missing key?
+3. What is the difference between `update()` and `subtract()`?
+4. Why can a `Counter` show zero or negative counts?
+5. What does `most_common(3)` return?
+6. What is the difference between `Counter(a) == Counter(b)` and `sorted(a) == sorted(b)` for anagram-style checks?
+7. Why does `elements()` ignore zero and negative counts?
+8. What does `+counter` do?
+
+#### Practice Answers
+1. `Counter` is better because it is built specifically for tallying, returns `0` for missing keys, and includes useful tools like `most_common()`, `update()`, and multiset operations.
+2. It returns `0` instead of raising `KeyError`.
+3. `update()` adds incoming counts to the existing counter, while `subtract()` subtracts them and can create zero or negative results.
+4. A `Counter` can show zero or negative counts because subtraction and manual assignments do not automatically remove keys when the count stops being positive.
+5. It returns a list of the three most common `(item, count)` pairs.
+6. `Counter(a) == Counter(b)` compares frequency directly and is usually the clearer fit for anagram logic, while `sorted(a) == sorted(b)` compares fully sorted sequences and often does more work than needed.
+7. `elements()` represents the counter as repeated existing items, so only positive counts make sense to expand into actual repeated values.
+8. `+counter` returns a cleaned counter containing only keys with positive counts.
 
 ---
 
@@ -811,7 +1065,7 @@ Track recurring mistakes so we can fix patterns quickly.
 
 - [x] Topic 12 complete
 - [x] Topic 13 complete
-- [ ] Topic 14 complete
+- [x] Topic 14 complete
 - [ ] Topic 15 complete
 - [ ] Topic 16 complete
 - [ ] Topic 17 complete
