@@ -18,6 +18,21 @@ Estimated total: ~4 hours 30 min
 
 ---
 
+## Quick Navigation
+- [Topic 12: Comprehensions vs Loops vs map/filter](#topic-12)
+- [Topic 13: Dict & Set Comprehensions](#topic-13)
+- [Topic 14: Unpacking](#topic-14)
+- [Topic 15: collections.Counter](#topic-15)
+- [Topic 16: collections.defaultdict](#topic-16)
+- [Topic 17: collections.deque](#topic-17)
+- [Topic 18: collections.namedtuple & dataclasses](#topic-18)
+- [Topic 19: Sorting Masterclass](#topic-19)
+- [Doubts and Q&A Log](#module-3-doubts)
+- [Mistakes and Corrections](#module-3-mistakes)
+- [Module 3 Progress Tracker](#module-3-progress)
+
+---
+
 ## Learning Workflow for Each Topic
 1. Concept in one line
 2. Mental model
@@ -37,6 +52,7 @@ Estimated total: ~4 hours 30 min
 
 ## Topic Notes
 
+<a id="topic-12"></a>
 ### Topic 12: Comprehensions vs Loops vs map/filter
 Status: Complete
 
@@ -272,6 +288,7 @@ Comprehension = concise build. Loop = explicit control. map/filter = lazy pipeli
 
 ---
 
+<a id="topic-13"></a>
 ### Topic 13: Dict & Set Comprehensions
 Status: Complete
 
@@ -482,6 +499,7 @@ Dict comprehension = map shape. Set comprehension = unique shape.
 
 ---
 
+<a id="topic-14"></a>
 ### Topic 14: Unpacking
 Status: Complete
 
@@ -753,6 +771,7 @@ Unpacking = describe the shape, let Python distribute.
 
 ---
 
+<a id="topic-15"></a>
 ### Topic 15: collections.Counter
 Status: In Progress
 
@@ -776,10 +795,14 @@ Think of `Counter` as a tally sheet that updates itself.
 
 #### Key Behaviors and Gotchas
 - Use `Counter(iterable)` to count items from a string, list, tuple, or any iterable.
+- The outer container passed into `Counter(...)` does not need to be hashable; the individual produced items do.
 - Use `Counter(mapping)` when you already have counts.
 - Missing keys read as `0`, which is one of `Counter`'s biggest conveniences.
 - `update()` adds counts; it does not replace them.
 - `subtract()` subtracts counts and can produce zero or negative values.
+- `update()` and `subtract()` mutate the existing counter in place.
+- `+` and `-` create a new counter instead of mutating the existing one.
+- `counter1 - counter2` drops zero and negative results, while `counter.subtract(...)` keeps them.
 - A key with count `0` is not automatically removed.
 - `counter["x"] == 0` does not mean `"x"` is stored as a key.
 - `most_common(n)` is a quick way to get top frequencies.
@@ -828,6 +851,8 @@ print(word_counts["dict"])   # 0
 What to notice:
 - Missing keys return `0` instead of raising an error.
 - This removes a lot of manual counting boilerplate.
+- The list itself is just the iterable container.
+- The counted items are the strings inside the list, and strings are hashable.
 
 Example 3: Compare manual counting vs `Counter`
 
@@ -896,7 +921,26 @@ What to notice:
 - `subtract()` can create negative counts.
 - Negative values can be useful when you want to represent shortages or deficits.
 
-Example 7: Multiset-style operations
+Example 7: Why `subtract()` is not the same as `-`
+
+```python
+from collections import Counter
+
+inventory = Counter({"pen": 10, "notebook": 5})
+sold = Counter({"pen": 4, "notebook": 7})
+
+print(inventory - sold)  # Counter({'pen': 6})
+
+inventory.subtract(sold)
+print(inventory)         # Counter({'pen': 6, 'notebook': -2})
+```
+
+What to notice:
+- `inventory - sold` creates a new counter.
+- The `-` operator removes zero and negative results.
+- `subtract()` mutates the existing counter and preserves negative counts.
+
+Example 8: Multiset-style operations
 
 ```python
 from collections import Counter
@@ -916,7 +960,28 @@ What to notice:
 - `&` keeps minimum shared counts.
 - `|` keeps maximum counts.
 
-Example 8: Expand back into repeated elements
+Example 9: Why `update()` is not the same as `+`
+
+```python
+from collections import Counter
+
+counts = Counter({"python": 2})
+incoming = ["python", "sql"]
+
+new_counts = counts + Counter(incoming)
+print(counts)      # Counter({'python': 2})
+print(new_counts)  # Counter({'python': 3, 'sql': 1})
+
+counts.update(incoming)
+print(counts)      # Counter({'python': 3, 'sql': 1})
+```
+
+What to notice:
+- `+` returns a new counter and usually expects another counter-like operand.
+- `update()` mutates the original counter.
+- `update()` is convenient when fresh data arrives as an iterable and you want to keep accumulating.
+
+Example 10: Expand back into repeated elements
 
 ```python
 from collections import Counter
@@ -930,7 +995,7 @@ What to notice:
 - `elements()` expands the multiset back into repeated items.
 - Zero and negative counts are ignored.
 
-Example 9: Clean out zero and negative counts
+Example 11: Clean out zero and negative counts
 
 ```python
 from collections import Counter
@@ -946,7 +1011,7 @@ What to notice:
 - `+counter` is a compact cleanup idiom.
 - It keeps only keys with positive counts.
 
-Example 10: Check if two strings are anagrams
+Example 12: Check if two strings are anagrams
 
 ```python
 from collections import Counter
@@ -961,27 +1026,225 @@ What to notice:
 - `Counter` is excellent for comparing frequency profiles.
 - This is a common interview and practice problem pattern.
 
+#### Production-Style Counter Examples
+Example 13: Count API status codes from application logs
+
+```python
+from collections import Counter
+
+status_codes = [200, 200, 201, 404, 500, 200, 404, 503, 500, 200]
+status_counter = Counter(status_codes)
+
+print(status_counter)
+print(status_counter.most_common())
+```
+
+What to notice:
+- This is a direct fit for observability summaries.
+- You can quickly answer questions like "how many 5xx responses happened?"
+- `most_common()` gives you an immediate incident snapshot.
+
+Example 14: Aggregate events batch by batch from a stream
+
+```python
+from collections import Counter
+
+running_counts = Counter()
+
+batches = [
+    ["login", "search", "search", "checkout"],
+    ["login", "login", "search"],
+    ["checkout", "search", "payment_failed"],
+]
+
+for batch in batches:
+    running_counts.update(batch)
+
+print(running_counts)
+```
+
+What to notice:
+- This models event ingestion in chunks.
+- `update()` is a natural fit when your process keeps a rolling in-memory tally.
+- This is one reason `update()` exists separately from `+`.
+
+Example 15: Top endpoints from access logs
+
+```python
+from collections import Counter
+
+endpoints = [
+    "/health",
+    "/login",
+    "/login",
+    "/products",
+    "/products",
+    "/products",
+    "/cart",
+    "/login",
+]
+
+endpoint_counter = Counter(endpoints)
+
+for endpoint, hits in endpoint_counter.most_common(3):
+    print(endpoint, hits)
+```
+
+What to notice:
+- This is a standard top-k reporting use case.
+- `Counter` is excellent when you want the hottest keys quickly.
+- Common production pattern: top endpoints, top search terms, top error types, top users by events.
+
+Example 16: Detect inventory shortages by subtracting demand from stock
+
+```python
+from collections import Counter
+
+stock = Counter({"pen": 100, "notebook": 40, "marker": 20})
+demand = Counter({"pen": 85, "notebook": 50, "marker": 10})
+
+remaining = stock.copy()
+remaining.subtract(demand)
+
+shortages = {item: -count for item, count in remaining.items() if count < 0}
+
+print(remaining)   # Counter({'pen': 15, 'marker': 10, 'notebook': -10})
+print(shortages)   # {'notebook': 10}
+```
+
+What to notice:
+- `subtract()` is useful when negative numbers are meaningful.
+- This is closer to operations and supply-chain logic than plain multiset math.
+- If you had used `stock - demand`, the shortage signal would disappear.
+
+Example 17: Compare yesterday vs today error distribution
+
+```python
+from collections import Counter
+
+yesterday = Counter(["timeout", "timeout", "db_error", "auth_error"])
+today = Counter(["timeout", "db_error", "db_error", "db_error", "auth_error"])
+
+delta = today.copy()
+delta.subtract(yesterday)
+
+print(delta)  # Counter({'db_error': 2, 'timeout': -1, 'auth_error': 0})
+```
+
+What to notice:
+- Positive counts mean an error type increased.
+- Negative counts mean it decreased.
+- This is a simple but useful diagnostic comparison pattern.
+
+Example 18: Build a word-frequency feature from text data
+
+```python
+from collections import Counter
+
+documents = [
+    "python data pipelines",
+    "python data structures",
+    "data pipelines in production",
+]
+
+token_counter = Counter()
+
+for doc in documents:
+    tokens = doc.lower().split()
+    token_counter.update(tokens)
+
+print(token_counter)
+print(token_counter.most_common(5))
+```
+
+What to notice:
+- This is a common preprocessing step in analytics and ML pipelines.
+- `Counter` works well for local bag-of-words style frequency features.
+- In production, tokenization may be more advanced, but the counting pattern is still the same.
+
+Example 19: Reconcile two services' category tallies
+
+```python
+from collections import Counter
+
+service_a = Counter({"success": 1200, "failed": 43, "retry": 21})
+service_b = Counter({"success": 1188, "failed": 52, "retry": 21})
+
+drift = service_a.copy()
+drift.subtract(service_b)
+
+print(drift)  # Counter({'success': 12, 'failed': -9, 'retry': 0})
+```
+
+What to notice:
+- This is useful when reconciling two sources that should mostly agree.
+- Non-zero values immediately show drift.
+- The sign tells you which side is higher.
+
+Example 20: Remove noisy low-frequency keys before reporting
+
+```python
+from collections import Counter
+
+search_terms = Counter({
+    "python": 120,
+    "sql": 95,
+    "pandas": 44,
+    "pyhton": 2,
+    "sqll": 1,
+})
+
+filtered = Counter({term: count for term, count in search_terms.items() if count >= 5})
+
+print(filtered)  # Counter({'python': 120, 'sql': 95, 'pandas': 44})
+```
+
+What to notice:
+- This is useful for cleanup before dashboards or downstream rules.
+- `Counter` pairs nicely with dict comprehensions when you need to prune noise.
+
+#### When Counter Fits Production Well
+- Local in-memory counting of events, tokens, endpoints, categories, or statuses.
+- Batch or stream consumers that need rolling tallies.
+- Top-k summaries and quick frequency dashboards.
+- Inventory, reconciliation, and drift-analysis use cases where count differences matter.
+- Pre-aggregation before writing results to a database, cache, or metrics system.
+
+#### When Counter Alone Is Not Enough
+- When counts must be shared across processes or machines.
+- When updates must be durable across restarts.
+- When concurrent writers need a strongly consistent source of truth.
+- When event volume is too high for a single-process in-memory structure.
+- In those cases, `Counter` is still useful as a local aggregation layer, but the system of record usually needs Redis, a database, Kafka consumers, or a metrics backend.
+
 #### Common Patterns
 - Use `Counter` for word frequency, character frequency, and event tallies.
 - Use `most_common()` for leaderboards and top-k questions.
 - Use `update()` when data arrives in chunks.
 - Use `subtract()` when comparing demand vs supply or sold vs available.
+- Use `update()` and `subtract()` when you want to mutate one running counter over time.
+- Use `+` and `-` when you want a derived result and want to leave the original counters untouched.
 - Use `Counter(a) == Counter(b)` for anagram-style frequency comparison.
 - Use `&` and `|` when you want multiset intersection and union behavior.
 - Use `+counter` to clean up non-positive counts before final output.
 
 #### Pitfalls to Avoid
 - Assuming `Counter` works with unhashable items like lists.
+- Confusing an unhashable outer iterable container with the hashability requirement for each counted element.
 - Forgetting that missing keys return `0`, which is different from normal dict access.
 - Thinking a zero count means the key must exist in the underlying mapping.
 - Assuming `subtract()` removes keys automatically when counts reach zero.
+- Assuming `update()` and `subtract()` are interchangeable with `+` and `-`.
 - Forgetting that `most_common()` materializes a ranked list.
 - Using `Counter` when a simple running integer or boolean flag would be enough.
 
 #### Quick Recap
 - `Counter` is a dict-like frequency tool for hashable items.
+- The counted elements must be hashable, but the iterable container you pass in does not.
 - Missing keys return `0`, which simplifies counting code.
 - `update()` adds counts; `subtract()` can create zero or negative counts.
+- `update()` and `subtract()` mutate in place, while `+` and `-` return new counters.
+- `counter1 - counter2` drops non-positive results, but `subtract()` keeps them.
 - `most_common()` gives ranked frequency results.
 - `Counter` also supports multiset-style arithmetic like `+`, `-`, `&`, and `|`.
 - Zero and negative counts may stick around until you clean them up.
@@ -1001,6 +1264,8 @@ When I need frequency analysis in Python, I reach for `collections.Counter` beca
 6. What is the difference between `Counter(a) == Counter(b)` and `sorted(a) == sorted(b)` for anagram-style checks?
 7. Why does `elements()` ignore zero and negative counts?
 8. What does `+counter` do?
+9. Why can `Counter(["a", "b", "a"])` work even though a list is unhashable?
+10. Why are `subtract()` and `-` not the same thing?
 
 #### Practice Answers
 1. `Counter` is better because it is built specifically for tallying, returns `0` for missing keys, and includes useful tools like `most_common()`, `update()`, and multiset operations.
@@ -1011,9 +1276,12 @@ When I need frequency analysis in Python, I reach for `collections.Counter` beca
 6. `Counter(a) == Counter(b)` compares frequency directly and is usually the clearer fit for anagram logic, while `sorted(a) == sorted(b)` compares fully sorted sequences and often does more work than needed.
 7. `elements()` represents the counter as repeated existing items, so only positive counts make sense to expand into actual repeated values.
 8. `+counter` returns a cleaned counter containing only keys with positive counts.
+9. It works because the list is only the iterable container being looped over; the actual counted elements are the strings inside it, and those strings are hashable.
+10. `subtract()` mutates an existing counter and preserves zero or negative results, while `counter1 - counter2` creates a new counter and drops non-positive counts.
 
 ---
 
+<a id="topic-16"></a>
 ### Topic 16: collections.defaultdict
 Status: Not Started
 
@@ -1021,6 +1289,7 @@ Notes: Pending.
 
 ---
 
+<a id="topic-17"></a>
 ### Topic 17: collections.deque
 Status: Not Started
 
@@ -1028,6 +1297,7 @@ Notes: Pending.
 
 ---
 
+<a id="topic-18"></a>
 ### Topic 18: collections.namedtuple & dataclasses
 Status: Not Started
 
@@ -1035,6 +1305,7 @@ Notes: Pending.
 
 ---
 
+<a id="topic-19"></a>
 ### Topic 19: Sorting Masterclass
 Status: Not Started
 
@@ -1042,6 +1313,7 @@ Notes: Pending.
 
 ---
 
+<a id="module-3-doubts"></a>
 ## Doubts and Q&A Log
 Use this section whenever you ask a question during Module 3.
 
@@ -1049,9 +1321,11 @@ Use this section whenever you ask a question during Module 3.
 |---|------|-------|------------|----------------|--------|
 | 1 | 2026-05-28 | - | - | - | - |
 | 2 | 2026-06-01 | Topic 14: Unpacking | Is it correct to think `*` or `**` on the left packs and on the right unpacks? Why does `[*nums1, *nums2]` produce `[1, 2, 3, 4]` instead of `[[1, 2], [3, 4]]`? | Better rule: starred targets on the left usually collect remaining values, while starred expressions on the right usually expand values into the surrounding call or literal. `[nums1, nums2]` nests two list objects, but `[*nums1, *nums2]` expands both lists element by element into one outer list. | Remember: left starred target collects, right starred expression expands. |
+| 3 | 2026-06-02 | Topic 15: collections.Counter | If `Counter` only accepts hashable items, how can `Counter(votes)` work when `votes` is a list? Why do we need `update()` and `subtract()` when `+` and `-` already exist? | The outer container passed to `Counter(...)` only needs to be iterable; the individual counted elements must be hashable. Here the list contains strings, and strings are hashable. Also, `update()` and `subtract()` mutate an existing counter, while `+` and `-` create new counters; `subtract()` preserves zero and negative counts, but `-` drops them. | Remember: iterable container can be unhashable, counted elements cannot. In-place methods and operators also have different semantics. |
 
 ---
 
+<a id="module-3-mistakes"></a>
 ## Mistakes and Corrections
 Track recurring mistakes so we can fix patterns quickly.
 
@@ -1061,6 +1335,7 @@ Track recurring mistakes so we can fix patterns quickly.
 
 ---
 
+<a id="module-3-progress"></a>
 ## Module 3 Progress Tracker
 
 - [x] Topic 12 complete
