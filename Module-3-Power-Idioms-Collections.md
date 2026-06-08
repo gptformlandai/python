@@ -1283,7 +1283,7 @@ When I need frequency analysis in Python, I reach for `collections.Counter` beca
 
 <a id="topic-16"></a>
 ### Topic 16: collections.defaultdict
-Status: In Progress
+Status: Complete
 
 #### Concept in One Line
 `collections.defaultdict` is a dict that automatically creates a default value for a missing key, removing a lot of manual "if key not in dict" code.
@@ -1696,9 +1696,365 @@ I reach for `defaultdict` when the core pattern is grouping or accumulating into
 
 <a id="topic-17"></a>
 ### Topic 17: collections.deque
-Status: Complete
+Status: In Progress
 
-Notes: Pending.
+#### Concept in One Line
+`collections.deque` is a double-ended queue optimized for fast append and pop operations from both ends.
+
+#### Mental Model
+Think of a deque as a train where you can attach or remove coaches from the front or the back efficiently.
+- A list is great when you mostly work at the right end.
+- A deque is better when the left end matters too.
+- The moment you need queue behavior with frequent front removals, `deque` becomes the right mental model.
+
+#### Memory Behavior in CPython
+- A deque is not a single contiguous dynamic array like a list.
+- In CPython, it is implemented as a linked sequence of fixed-size blocks, which is why appending and popping from both ends stays efficient.
+- Because it is block-based rather than fully contiguous, random access in the middle is slower than with a list.
+- Appending or popping at either end usually only touches one block edge, so those operations are cheap.
+- A bounded deque created with `maxlen` automatically discards items from the opposite side when full.
+- A deque holds references to objects just like lists and dicts; it does not deep-copy stored items.
+
+#### Key Behaviors and Gotchas
+- `append()` and `pop()` work on the right side.
+- `appendleft()` and `popleft()` work on the left side.
+- `popleft()` is the big reason deque is better than list for queues.
+- `deque(maxlen=n)` creates a fixed-length rolling buffer.
+- When a bounded deque is full, appending to one side drops an item from the other side automatically.
+- `rotate(k)` shifts items right for positive `k` and left for negative `k`.
+- `extendleft(iterable)` adds items one by one to the left, so the iterable's order appears reversed in the final deque.
+- Indexing near the ends is fine, but frequent middle access is not what deque is built for.
+- Deques do not support slicing like lists do.
+- If your workload is mostly random indexing and in-place middle updates, a list is usually the better fit.
+
+#### Time Complexity Notes
+- `append()` / `appendleft()`: O(1)
+- `pop()` / `popleft()`: O(1)
+- Access by index near either end: effectively fast, but general indexed access is O(n)
+- Insert/remove in the middle: O(n)
+- `rotate(k)`: proportional to the effective rotation work
+- Queue processing over `n` items with repeated `popleft()`: O(n)
+- List queue pattern with repeated `pop(0)`: O(n^2) over many removals
+
+#### Examples
+Example 1: Basic deque operations
+
+```python
+from collections import deque
+
+items = deque([1, 2, 3])
+
+items.append(4)
+items.appendleft(0)
+
+print(items)          # deque([0, 1, 2, 3, 4])
+print(items.pop())    # 4
+print(items.popleft())# 0
+print(items)          # deque([1, 2, 3])
+```
+
+What to notice:
+- A deque works naturally from both ends.
+- This is the core behavior to remember.
+
+Example 2: Why deque is better than list for queue behavior
+
+```python
+from collections import deque
+
+queue = deque(["a", "b", "c"])
+print(queue.popleft())  # a
+print(queue.popleft())  # b
+
+items = ["a", "b", "c"]
+print(items.pop(0))     # a
+```
+
+What to notice:
+- Both remove from the front.
+- The deque version is designed for this pattern; the list version shifts remaining elements each time.
+
+Example 3: Use deque as a stack too
+
+```python
+from collections import deque
+
+stack = deque()
+stack.append("first")
+stack.append("second")
+
+print(stack.pop())  # second
+print(stack.pop())  # first
+```
+
+What to notice:
+- Deque can act as both queue and stack.
+- A list is also fine for stack behavior, so deque is mainly compelling when both ends matter.
+
+Example 4: Fixed-size rolling history with `maxlen`
+
+```python
+from collections import deque
+
+history = deque(maxlen=3)
+
+for value in [10, 20, 30, 40, 50]:
+    history.append(value)
+    print(history)
+```
+
+What to notice:
+- Once full, the deque keeps only the most recent items.
+- This is a common rolling-window pattern.
+
+Example 5: Rotate items
+
+```python
+from collections import deque
+
+dq = deque([1, 2, 3, 4])
+
+dq.rotate(1)
+print(dq)  # deque([4, 1, 2, 3])
+
+dq.rotate(-2)
+print(dq)  # deque([2, 3, 4, 1])
+```
+
+What to notice:
+- Positive rotation moves items from right to left.
+- Negative rotation moves items from left to right.
+
+Example 6: `extendleft()` reverses incoming order
+
+```python
+from collections import deque
+
+dq = deque([3, 4])
+dq.extendleft([1, 2])
+
+print(dq)  # deque([2, 1, 3, 4])
+```
+
+What to notice:
+- `extendleft()` inserts one item at a time on the left.
+- That means the iterable appears reversed in the final deque.
+
+Example 7: Breadth-first search queue
+
+```python
+from collections import deque
+
+graph = {
+    "A": ["B", "C"],
+    "B": ["D"],
+    "C": ["E"],
+    "D": [],
+    "E": [],
+}
+
+queue = deque(["A"])
+seen = {"A"}
+order = []
+
+while queue:
+    node = queue.popleft()
+    order.append(node)
+
+    for neighbor in graph[node]:
+        if neighbor not in seen:
+            seen.add(neighbor)
+            queue.append(neighbor)
+
+print(order)  # ['A', 'B', 'C', 'D', 'E']
+```
+
+What to notice:
+- BFS is one of the canonical deque use cases.
+- `popleft()` keeps the queue efficient.
+
+Example 8: Sliding window sum
+
+```python
+from collections import deque
+
+window = deque(maxlen=3)
+nums = [5, 7, 2, 8, 1]
+
+for num in nums:
+    window.append(num)
+    print(list(window), sum(window))
+```
+
+What to notice:
+- `maxlen` makes rolling windows simple.
+- This pattern is common before building more advanced window logic.
+
+Example 9: Recent log buffer
+
+```python
+from collections import deque
+
+recent_logs = deque(maxlen=4)
+
+for line in [
+    "INFO start",
+    "INFO ready",
+    "WARN slow query",
+    "ERROR timeout",
+    "INFO retrying",
+]:
+    recent_logs.append(line)
+
+print(list(recent_logs))
+```
+
+What to notice:
+- This keeps only the newest log lines in memory.
+- Very useful for debug snapshots and tail-style views.
+
+Example 10: Undo/redo style buffer
+
+```python
+from collections import deque
+
+undo_stack = deque()
+redo_stack = deque()
+
+for action in ["type A", "type B", "delete B"]:
+    undo_stack.append(action)
+
+last_action = undo_stack.pop()
+redo_stack.append(last_action)
+
+print(list(undo_stack))  # ['type A', 'type B']
+print(list(redo_stack))  # ['delete B']
+```
+
+What to notice:
+- Deque is a natural buffer for reversible operations.
+- Both ends can matter depending on the workflow.
+
+Example 11: Simple round-robin worker rotation
+
+```python
+from collections import deque
+
+workers = deque(["w1", "w2", "w3"])
+
+for task in ["t1", "t2", "t3", "t4"]:
+    worker = workers[0]
+    print(task, "->", worker)
+    workers.rotate(-1)
+```
+
+What to notice:
+- `rotate()` is useful when the active front item should cycle.
+- This pattern shows up in round-robin scheduling and fair dispatching.
+
+#### Production-Style deque Examples
+Example 12: Keep a bounded request history per service instance
+
+```python
+from collections import deque
+
+recent_requests = deque(maxlen=5)
+
+for request_id in [101, 102, 103, 104, 105, 106]:
+    recent_requests.append(request_id)
+
+print(list(recent_requests))  # [102, 103, 104, 105, 106]
+```
+
+What to notice:
+- This is a cheap in-memory debugging aid.
+- `maxlen` prevents unbounded growth.
+
+Example 13: Sliding error window for local alert logic
+
+```python
+from collections import deque
+
+last_five = deque(maxlen=5)
+
+for status in [200, 500, 500, 200, 503, 500, 200]:
+    last_five.append(status)
+    error_count = sum(code >= 500 for code in last_five)
+    print(list(last_five), error_count)
+```
+
+What to notice:
+- This is a compact local rolling-window pattern.
+- It works well when the window size is small and fixed.
+
+Example 14: Queue tasks for breadth-first processing
+
+```python
+from collections import deque
+
+tasks = deque(["root_job"])
+
+while tasks:
+    current = tasks.popleft()
+    print("processing", current)
+
+    if current == "root_job":
+        tasks.extend(["child_1", "child_2"])
+```
+
+What to notice:
+- Deque is a better fit than list for work queues with front removals.
+- This shape appears in crawlers, BFS-style jobs, and task expansion pipelines.
+
+#### Common Patterns
+- Use deque for queues with frequent front removals.
+- Use deque with `maxlen` for rolling history and sliding windows.
+- Use deque for BFS and worklist processing.
+- Use `rotate()` for round-robin or cyclic scheduling patterns.
+- Use deque as a stack when you want symmetry with queue behavior.
+- Reach for list instead when random indexing is the dominant operation.
+
+#### Pitfalls to Avoid
+- Using a list as a queue with repeated `pop(0)`.
+- Forgetting that `extendleft()` reverses the incoming iterable order.
+- Treating deque like a list for slicing and frequent middle access.
+- Accidentally relying on bracket reads in the middle of a large deque as if they were cheap.
+- Using deque where you actually need a heap, priority queue, or sorted structure.
+- Forgetting that bounded deques silently evict old items once full.
+
+#### Quick Recap
+- Deque means double-ended queue.
+- Appends and pops at both ends are O(1).
+- `popleft()` is the key advantage over list for queues.
+- `maxlen` turns deque into a rolling buffer.
+- `rotate()` is useful for cyclic workflows.
+- Deque is great for queueing and windows, but not for list-style random access or slicing.
+
+#### Interview Sound Bite
+I use `collections.deque` when I need efficient operations at both ends, especially queue behavior with repeated front removals, because `popleft()` stays O(1) while a list-based queue with `pop(0)` keeps shifting elements and gets expensive over time.
+
+#### Memory Hook
+Deque = queue-friendly list alternative with fast left side.
+
+#### Practice Questions
+1. Why is deque better than list for queue behavior?
+2. What is the difference between `appendleft()` and `append()`?
+3. What does `maxlen` do?
+4. Why is deque usually a poor fit for heavy random indexing?
+5. What is a common gotcha with `extendleft()`?
+6. When is a list still better than deque?
+7. Why is deque a natural fit for BFS?
+8. What happens when you append to a full bounded deque?
+
+#### Practice Answers
+1. Deque is better because removing from the left with `popleft()` is O(1), while list front removals with `pop(0)` shift remaining elements and are much more expensive over repeated operations.
+2. `append()` adds to the right end, while `appendleft()` adds to the left end.
+3. `maxlen` sets a fixed capacity, so once full the deque automatically discards items from the opposite side when new ones are appended.
+4. It is a poor fit because deque is optimized for the ends, not for frequent indexed access into the middle.
+5. `extendleft()` reverses the input iterable's visible order in the final deque because it inserts each item at the left one by one.
+6. A list is still better when you mostly need random indexing, slicing, or array-like access patterns.
+7. It is a natural fit for BFS because nodes are processed in FIFO order, and deque supports efficient enqueue at the right and dequeue from the left.
+8. The deque keeps its maximum size and silently drops an item from the opposite end.
 
 ---
 
@@ -1747,7 +2103,7 @@ Track recurring mistakes so we can fix patterns quickly.
 - [x] Topic 13 complete
 - [x] Topic 14 complete
 - [x] Topic 15 complete
-- [ ] Topic 16 complete
+- [x] Topic 16 complete
 - [ ] Topic 17 complete
 - [ ] Topic 18 complete
 - [ ] Topic 19 complete
