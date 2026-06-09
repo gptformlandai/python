@@ -2094,6 +2094,61 @@ Think of them as two ways to stop passing around anonymous tuples and messy dict
 - A frozen dataclass can also be hashable, depending on configuration and field types.
 - If you need methods and validation logic, dataclasses usually scale better than namedtuples.
 
+#### Normal Class vs Dataclass
+Think of a dataclass as a normal class with common boilerplate generated for you.
+
+Normal class version:
+
+```python
+class Employee:
+    def __init__(self, name, team):
+        self.name = name
+        self.team = team
+
+    def __repr__(self):
+        return f"Employee(name={self.name!r}, team={self.team!r})"
+
+    def __eq__(self, other):
+        if not isinstance(other, Employee):
+            return NotImplemented
+        return (self.name, self.team) == (other.name, other.team)
+```
+
+Dataclass version:
+
+```python
+from dataclasses import dataclass
+
+@dataclass
+class Employee:
+    name: str
+    team: str
+```
+
+What to notice:
+- The dataclass version keeps the data model visible and removes repetitive method-writing.
+- A normal class gives total manual control from the beginning.
+- A dataclass is still a normal class under the hood; it just generates common methods based on the fields.
+
+#### What Advantage Dataclass Provides
+- Much less boilerplate for data-holding classes.
+- The field definitions are concentrated in one place, so the shape of the object is easier to read.
+- Default values, comparison behavior, immutability options, ordering, and post-init logic are easier to express.
+- Dataclasses scale well when a simple record starts growing into a real model.
+- Type hints integrate naturally with the field declarations.
+
+#### Dataclass Defaults
+With plain `@dataclass` and default settings, Python usually generates these behaviors for you:
+- `__init__` to accept field values and assign them.
+- `__repr__` for a readable debug representation.
+- `__eq__` for value-based equality.
+- `__match_args__` in modern Python versions, which helps structural pattern matching.
+
+Important note:
+- Ordering methods like `__lt__`, `__le__`, `__gt__`, and `__ge__` are not generated unless you set `order=True`.
+- A hash method is not freely generated in the common mutable case; hash behavior depends on options like `frozen` and `eq`.
+- Dataclass does not generate business logic methods for you; it only removes common data-model boilerplate.
+
 #### Time Complexity Notes
 - Attribute access on either structure: O(1)
 - Indexing a `namedtuple`: O(1)
@@ -2206,6 +2261,29 @@ print(config)  # ServiceConfig(host='localhost', port=8000, debug=False)
 What to notice:
 - Defaults feel natural.
 - This is much cleaner than writing the boilerplate by hand.
+
+Example 6A: Default generated equality and repr
+
+```python
+from dataclasses import dataclass
+
+@dataclass
+class Employee:
+    name: str
+    team: str
+
+
+emp1 = Employee("Aravind", "platform")
+emp2 = Employee("Aravind", "platform")
+
+print(emp1)         # Employee(name='Aravind', team='platform')
+print(emp1 == emp2) # True
+```
+
+What to notice:
+- `__repr__` is generated automatically.
+- `__eq__` compares field values, not object identity.
+- This is one of the biggest practical wins over a plain handwritten class with no extra methods.
 
 Example 7: Mutable default pitfall in dataclasses
 
@@ -2427,6 +2505,8 @@ What to notice:
 - `dataclass` is class-like, readable, and flexible.
 - Use `namedtuple` for compact immutable records.
 - Use dataclasses when the model is evolving or needs defaults, methods, or post-init logic.
+- A dataclass is still a normal class, but it generates common data-model methods for you.
+- With default settings, the main generated methods are `__init__`, `__repr__`, and `__eq__`.
 - `field(default_factory=...)` is the correct fix for mutable dataclass defaults.
 - The right choice is mostly about ergonomics and future evolution, not raw Big-O.
 
@@ -2445,6 +2525,8 @@ I use `namedtuple` when I want a compact immutable record with tuple behavior, a
 6. Why might `__post_init__` be useful?
 7. Why can a `namedtuple` often be used as a dict key?
 8. What is the practical difference between `_replace()` and mutating a dataclass field?
+9. What is the difference between a normal class and a dataclass?
+10. Which methods does a dataclass usually generate by default?
 
 #### Practice Answers
 1. They both solve the problem of representing related values with clear named fields instead of anonymous tuples or loosely structured dictionaries.
@@ -2455,6 +2537,8 @@ I use `namedtuple` when I want a compact immutable record with tuple behavior, a
 6. It is useful for normalization, validation, or derived-field setup that should happen right after initialization.
 7. It can often be used as a dict key because it is tuple-based and immutable at the field-binding level, assuming its contained field values are hashable.
 8. `_replace()` creates a new `namedtuple` instance with changed values, while a normal mutable dataclass field can usually be updated directly on the existing instance.
+9. A normal class requires you to write common methods like initialization, representation, and equality yourself, while a dataclass is still a normal class but can generate those data-model methods automatically from field declarations.
+10. With default settings, a dataclass usually generates `__init__`, `__repr__`, and `__eq__`; ordering methods require `order=True`, and hash behavior depends on options like `frozen` and `eq`.
 
 ---
 
@@ -2475,6 +2559,7 @@ Use this section whenever you ask a question during Module 3.
 | 1 | 2026-05-28 | - | - | - | - |
 | 2 | 2026-06-01 | Topic 14: Unpacking | Is it correct to think `*` or `**` on the left packs and on the right unpacks? Why does `[*nums1, *nums2]` produce `[1, 2, 3, 4]` instead of `[[1, 2], [3, 4]]`? | Better rule: starred targets on the left usually collect remaining values, while starred expressions on the right usually expand values into the surrounding call or literal. `[nums1, nums2]` nests two list objects, but `[*nums1, *nums2]` expands both lists element by element into one outer list. | Remember: left starred target collects, right starred expression expands. |
 | 3 | 2026-06-02 | Topic 15: collections.Counter | If `Counter` only accepts hashable items, how can `Counter(votes)` work when `votes` is a list? Why do we need `update()` and `subtract()` when `+` and `-` already exist? | The outer container passed to `Counter(...)` only needs to be iterable; the individual counted elements must be hashable. Here the list contains strings, and strings are hashable. Also, `update()` and `subtract()` mutate an existing counter, while `+` and `-` create new counters; `subtract()` preserves zero and negative counts, but `-` drops them. | Remember: iterable container can be unhashable, counted elements cannot. In-place methods and operators also have different semantics. |
+| 4 | 2026-06-09 | Topic 18: collections.namedtuple & dataclasses | What is the difference between a normal class and a dataclass? What advantage does a dataclass provide, and which methods does it generate by default? | A dataclass is still a normal class, but it auto-generates common data-model methods from field declarations. Its main advantage is removing boilerplate while keeping the structure readable. With default settings, it usually generates `__init__`, `__repr__`, and `__eq__`; ordering requires `order=True`, and hash behavior depends on options like `frozen` and `eq`. | Remember: dataclass is a boilerplate-reduction tool for data-holding classes, not a different kind of class. |
 
 ---
 
