@@ -1696,7 +1696,7 @@ I reach for `defaultdict` when the core pattern is grouping or accumulating into
 
 <a id="topic-17"></a>
 ### Topic 17: collections.deque
-Status: In Progress
+Status: Complete
 
 #### Concept in One Line
 `collections.deque` is a double-ended queue optimized for fast append and pop operations from both ends.
@@ -2060,9 +2060,401 @@ Deque = queue-friendly list alternative with fast left side.
 
 <a id="topic-18"></a>
 ### Topic 18: collections.namedtuple & dataclasses
-Status: Not Started
+Status: In Progress
 
-Notes: Pending.
+#### Concept in One Line
+`namedtuple` and `dataclass` both give structure to related values, but `namedtuple` is a lightweight immutable tuple-like record while `dataclass` is a class-first tool for readable, maintainable data objects.
+
+#### Mental Model
+Think of them as two ways to stop passing around anonymous tuples and messy dictionaries.
+- `namedtuple` is for compact records that should feel like tuples with names.
+- `dataclass` is for small-to-medium domain objects that should feel like normal classes without boilerplate.
+- If you want tuple behavior plus field names, think `namedtuple`.
+- If you want a real class with generated `__init__`, `__repr__`, and comparisons, think `dataclass`.
+
+#### Memory Behavior in CPython
+- A `namedtuple` instance is a tuple subclass, so it stores positional values in a tuple-like structure and is immutable at the field-binding level.
+- Because it is tuple-based, a `namedtuple` is generally compact and supports tuple operations like unpacking and indexing.
+- A `dataclass` is a normal Python class instance with generated methods layered on top.
+- By default, a regular dataclass instance stores attributes in an instance dictionary, unless you use `slots=True`.
+- `frozen=True` on a dataclass prevents normal attribute reassignment, but it does not deep-freeze mutable field values.
+- Mutable defaults in dataclasses must use `field(default_factory=...)` so each instance gets its own fresh object.
+- Both `namedtuple` and dataclass instances hold references to their field values; neither deep-copies values automatically.
+
+#### Key Behaviors and Gotchas
+- Use `namedtuple` when the record is simple, mostly immutable, and tuple-like behavior is useful.
+- Use `dataclass` when readability, evolution, and explicit fields matter more than tuple compatibility.
+- `namedtuple` fields are accessible by name, but the instance still behaves like a tuple.
+- Dataclasses generate methods like `__init__`, `__repr__`, and optionally equality and ordering.
+- `namedtuple` is immutable at the attribute level; use `_replace()` to create a modified copy.
+- Dataclasses are mutable by default.
+- Use `frozen=True` if a dataclass should behave like an immutable record.
+- Do not use mutable defaults like `tags=[]` in a dataclass; use `field(default_factory=list)`.
+- `namedtuple` instances can often be hashable if their fields are hashable.
+- A frozen dataclass can also be hashable, depending on configuration and field types.
+- If you need methods and validation logic, dataclasses usually scale better than namedtuples.
+
+#### Time Complexity Notes
+- Attribute access on either structure: O(1)
+- Indexing a `namedtuple`: O(1)
+- Creating an instance with `k` fields: O(k)
+- Equality comparison: O(k) in the number of fields compared
+- Converting to dict-like output with helpers such as `_asdict()` or `asdict()`: O(k), plus nested conversion cost where applicable
+- The main trade-off here is not Big-O but ergonomics, immutability, and memory shape
+
+#### Examples
+Example 1: Basic `namedtuple`
+
+```python
+from collections import namedtuple
+
+Point = namedtuple("Point", ["x", "y"])
+p = Point(10, 20)
+
+print(p.x)   # 10
+print(p.y)   # 20
+print(p[0])  # 10
+```
+
+What to notice:
+- You get both named fields and tuple-style indexing.
+- This is the classic lightweight record shape.
+
+Example 2: Unpack a `namedtuple`
+
+```python
+from collections import namedtuple
+
+Color = namedtuple("Color", ["red", "green", "blue"])
+color = Color(10, 20, 30)
+
+r, g, b = color
+print(r, g, b)  # 10 20 30
+```
+
+What to notice:
+- A `namedtuple` still behaves like a tuple.
+- Unpacking feels natural.
+
+Example 3: Use `_replace()` with `namedtuple`
+
+```python
+from collections import namedtuple
+
+User = namedtuple("User", ["name", "role"])
+user = User("Aravind", "learner")
+updated_user = user._replace(role="engineer")
+
+print(user)         # User(name='Aravind', role='learner')
+print(updated_user) # User(name='Aravind', role='engineer')
+```
+
+What to notice:
+- You do not mutate the original record.
+- `_replace()` creates a new instance.
+
+Example 4: `_asdict()` for export
+
+```python
+from collections import namedtuple
+
+Book = namedtuple("Book", ["title", "pages"])
+book = Book("Python Notes", 250)
+
+print(book._asdict())  # {'title': 'Python Notes', 'pages': 250}
+```
+
+What to notice:
+- `namedtuple` can be converted to a mapping-friendly representation.
+- Helpful for logs, APIs, and serialization prep.
+
+Example 5: Basic dataclass
+
+```python
+from dataclasses import dataclass
+
+@dataclass
+class Employee:
+    name: str
+    team: str
+
+
+emp = Employee("Aravind", "platform")
+print(emp)  # Employee(name='Aravind', team='platform')
+```
+
+What to notice:
+- Dataclasses look like normal classes.
+- The constructor and readable repr are generated for you.
+
+Example 6: Dataclass with defaults
+
+```python
+from dataclasses import dataclass
+
+@dataclass
+class ServiceConfig:
+    host: str
+    port: int = 8000
+    debug: bool = False
+
+
+config = ServiceConfig("localhost")
+print(config)  # ServiceConfig(host='localhost', port=8000, debug=False)
+```
+
+What to notice:
+- Defaults feel natural.
+- This is much cleaner than writing the boilerplate by hand.
+
+Example 7: Mutable default pitfall in dataclasses
+
+```python
+from dataclasses import dataclass, field
+
+@dataclass
+class Report:
+    title: str
+    tags: list[str] = field(default_factory=list)
+
+
+report1 = Report("daily")
+report2 = Report("weekly")
+
+report1.tags.append("ops")
+
+print(report1.tags)  # ['ops']
+print(report2.tags)  # []
+```
+
+What to notice:
+- `default_factory` gives each instance its own list.
+- This avoids the shared mutable default bug.
+
+Example 8: Frozen dataclass
+
+```python
+from dataclasses import dataclass
+
+@dataclass(frozen=True)
+class ApiKey:
+    key_id: str
+    owner: str
+
+
+token = ApiKey("k1", "team-a")
+print(token.owner)  # team-a
+```
+
+What to notice:
+- The instance behaves like an immutable record at the attribute level.
+- This is the dataclass equivalent of a more stable value object.
+
+Example 9: Dataclass with computed setup in `__post_init__`
+
+```python
+from dataclasses import dataclass
+
+@dataclass
+class UserInput:
+    raw_name: str
+    normalized_name: str = ""
+
+    def __post_init__(self):
+        self.normalized_name = self.raw_name.strip().lower()
+
+
+user = UserInput("  Aravind  ")
+print(user.normalized_name)  # aravind
+```
+
+What to notice:
+- `__post_init__` is useful when derived fields depend on the incoming constructor values.
+- This is a dataclass advantage over a bare `namedtuple`.
+
+Example 10: Ordering with dataclasses
+
+```python
+from dataclasses import dataclass
+
+@dataclass(order=True)
+class Score:
+    points: int
+    name: str
+
+
+scores = [Score(92, "ana"), Score(85, "bob"), Score(95, "dina")]
+print(sorted(scores))
+```
+
+What to notice:
+- `order=True` generates ordering methods.
+- Useful for small value objects that need natural sorting.
+
+Example 11: `namedtuple` as a dict key
+
+```python
+from collections import namedtuple
+
+Coordinate = namedtuple("Coordinate", ["x", "y"])
+visited = {Coordinate(1, 2): "seen"}
+
+print(visited[Coordinate(1, 2)])  # seen
+```
+
+What to notice:
+- Tuple-like immutability makes this pattern natural when fields are hashable.
+- This is one place `namedtuple` feels especially elegant.
+
+Example 12: Convert a dataclass to a plain dict
+
+```python
+from dataclasses import asdict, dataclass
+
+@dataclass
+class Product:
+    name: str
+    price: float
+
+
+product = Product("Keyboard", 49.99)
+print(asdict(product))  # {'name': 'Keyboard', 'price': 49.99}
+```
+
+What to notice:
+- `asdict()` is handy for serialization-friendly output.
+- This is often useful before JSON conversion or logging.
+
+#### Production-Style namedtuple / dataclass Examples
+Example 13: Use a dataclass for parsed config
+
+```python
+from dataclasses import dataclass
+
+@dataclass
+class DbConfig:
+    host: str
+    port: int
+    pool_size: int = 10
+    ssl_enabled: bool = True
+
+
+config = DbConfig("db.internal", 5432)
+print(config)
+```
+
+What to notice:
+- Config objects become clearer and safer than raw dicts.
+- Named fields reduce key-typo mistakes.
+
+Example 14: Use `namedtuple` for compact read-only rows
+
+```python
+from collections import namedtuple
+
+LogRow = namedtuple("LogRow", ["timestamp", "level", "message"])
+
+row = LogRow("2026-06-09T10:00:00", "ERROR", "timeout")
+print(row.level)  # ERROR
+```
+
+What to notice:
+- This is a good fit for compact record-like rows that should stay simple.
+- It is especially nice when tuple compatibility matters.
+
+Example 15: Group domain data with nested dataclasses
+
+```python
+from dataclasses import dataclass, field
+
+@dataclass
+class LineItem:
+    name: str
+    quantity: int
+
+@dataclass
+class Order:
+    order_id: int
+    items: list[LineItem] = field(default_factory=list)
+
+
+order = Order(101)
+order.items.append(LineItem("mouse", 2))
+print(order)
+```
+
+What to notice:
+- Dataclasses scale well once the structure starts feeling like a real model.
+- This is much clearer than nesting raw tuples and dicts.
+
+Example 16: Frozen dataclass as a stable key-like value object
+
+```python
+from dataclasses import dataclass
+
+@dataclass(frozen=True)
+class FeatureFlagKey:
+    service: str
+    environment: str
+
+
+enabled = {FeatureFlagKey("billing", "prod"): True}
+print(enabled[FeatureFlagKey("billing", "prod")])  # True
+```
+
+What to notice:
+- Frozen dataclasses can behave like stable value objects when fields are hashable.
+- This is often easier to evolve than a raw tuple key.
+
+#### Common Patterns
+- Use `namedtuple` for small immutable records with tuple-like behavior.
+- Use `dataclass` for readable models, configs, DTOs, and structured domain objects.
+- Use `field(default_factory=...)` for mutable dataclass fields.
+- Use `frozen=True` when a dataclass should act like a value object.
+- Use `__post_init__` for normalization or derived fields after initialization.
+- Convert to dict-like output with `_asdict()` or `asdict()` when integrating with logs or APIs.
+
+#### Pitfalls to Avoid
+- Using raw tuples when field names would make the code clearer.
+- Using a mutable dataclass default like `items=[]` instead of `default_factory`.
+- Expecting `frozen=True` to deep-freeze nested mutable objects.
+- Using `namedtuple` when the model is clearly growing methods, validation, or richer behavior.
+- Using dataclasses for hot tuple-like records when you really want compact immutable tuple semantics.
+- Forgetting that `namedtuple` is still positional under the hood, so field order still matters.
+
+#### Quick Recap
+- `namedtuple` is tuple-like, lightweight, and immutable at the field-binding level.
+- `dataclass` is class-like, readable, and flexible.
+- Use `namedtuple` for compact immutable records.
+- Use dataclasses when the model is evolving or needs defaults, methods, or post-init logic.
+- `field(default_factory=...)` is the correct fix for mutable dataclass defaults.
+- The right choice is mostly about ergonomics and future evolution, not raw Big-O.
+
+#### Interview Sound Bite
+I use `namedtuple` when I want a compact immutable record with tuple behavior, and I use `dataclass` when I want a real readable data model with generated boilerplate, defaults, and optional post-initialization logic, because dataclasses scale better as the model becomes more expressive.
+
+#### Memory Hook
+`namedtuple` = named immutable tuple. Dataclass = boilerplate-free data class.
+
+#### Practice Questions
+1. What problem do `namedtuple` and `dataclass` both solve?
+2. When is `namedtuple` a better fit than dataclass?
+3. When is dataclass a better fit than `namedtuple`?
+4. Why is `field(default_factory=list)` important?
+5. What does `frozen=True` do in a dataclass?
+6. Why might `__post_init__` be useful?
+7. Why can a `namedtuple` often be used as a dict key?
+8. What is the practical difference between `_replace()` and mutating a dataclass field?
+
+#### Practice Answers
+1. They both solve the problem of representing related values with clear named fields instead of anonymous tuples or loosely structured dictionaries.
+2. `namedtuple` is a better fit when the record is simple, immutable, compact, and tuple-like behavior such as unpacking or indexing is useful.
+3. Dataclass is a better fit when the model needs defaults, methods, validation, post-init logic, or is likely to evolve over time.
+4. It is important because it creates a fresh list for each instance instead of sharing one mutable default across all instances.
+5. It prevents normal attribute reassignment, making the dataclass behave more like an immutable value object.
+6. It is useful for normalization, validation, or derived-field setup that should happen right after initialization.
+7. It can often be used as a dict key because it is tuple-based and immutable at the field-binding level, assuming its contained field values are hashable.
+8. `_replace()` creates a new `namedtuple` instance with changed values, while a normal mutable dataclass field can usually be updated directly on the existing instance.
 
 ---
 
@@ -2104,7 +2496,7 @@ Track recurring mistakes so we can fix patterns quickly.
 - [x] Topic 14 complete
 - [x] Topic 15 complete
 - [x] Topic 16 complete
-- [ ] Topic 17 complete
+- [x] Topic 17 complete
 - [ ] Topic 18 complete
 - [ ] Topic 19 complete
 - [ ] Module 3 revision complete
