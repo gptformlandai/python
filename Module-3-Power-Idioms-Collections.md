@@ -2085,6 +2085,7 @@ Think of them as two ways to stop passing around anonymous tuples and messy dict
 - Use `namedtuple` when the record is simple, mostly immutable, and tuple-like behavior is useful.
 - Use `dataclass` when readability, evolution, and explicit fields matter more than tuple compatibility.
 - `namedtuple` fields are accessible by name, but the instance still behaves like a tuple.
+- `namedtuple` can have default values, but only for the rightmost fields.
 - Dataclasses generate methods like `__init__`, `__repr__`, and optionally equality and ordering.
 - `namedtuple` is immutable at the attribute level; use `_replace()` to create a modified copy.
 - Dataclasses are mutable by default.
@@ -2146,6 +2147,7 @@ With plain `@dataclass` and default settings, Python usually generates these beh
 
 Important note:
 - Ordering methods like `__lt__`, `__le__`, `__gt__`, and `__ge__` are not generated unless you set `order=True`.
+- With `order=True`, dataclass compares instances as if it were comparing tuples of their fields in definition order.
 - A hash method is not freely generated in the common mutable case; hash behavior depends on options like `frozen` and `eq`.
 - Dataclass does not generate business logic methods for you; it only removes common data-model boilerplate.
 
@@ -2222,6 +2224,41 @@ print(book._asdict())  # {'title': 'Python Notes', 'pages': 250}
 What to notice:
 - `namedtuple` can be converted to a mapping-friendly representation.
 - Helpful for logs, APIs, and serialization prep.
+
+Example 4A: Default values in `namedtuple`
+
+```python
+from collections import namedtuple
+
+User = namedtuple("User", ["name", "role", "active"], defaults=["learner", True])
+
+user1 = User("Aravind")
+user2 = User("Ana", "mentor", False)
+
+print(user1)                # User(name='Aravind', role='learner', active=True)
+print(user2)                # User(name='Ana', role='mentor', active=False)
+print(User._field_defaults) # {'role': 'learner', 'active': True}
+```
+
+What to notice:
+- Defaults apply to the rightmost fields only.
+- Here `name` is still required, while `role` and `active` get defaults.
+- `_field_defaults` shows which fields have defaults.
+
+Example 4B: Why middle-field-only defaults do not fit naturally
+
+```python
+from collections import namedtuple
+
+Person = namedtuple("Person", ["name", "role", "active"], defaults=[True])
+
+print(Person("Aravind", "learner"))  # Person(name='Aravind', role='learner', active=True)
+```
+
+What to notice:
+- A single default here applies only to the last field, `active`.
+- `namedtuple` does not let you skip to the middle and default just `role` while leaving a later field required.
+- Think of `namedtuple` defaults as trailing defaults.
 
 Example 5: Basic dataclass
 
@@ -2369,6 +2406,31 @@ What to notice:
 - `order=True` generates ordering methods.
 - Useful for small value objects that need natural sorting.
 
+Example 10A: Ordering follows field definition order
+
+```python
+from dataclasses import dataclass
+
+@dataclass(order=True)
+class Person:
+    age: int
+    name: str
+
+
+people = [
+    Person(30, "Zara"),
+    Person(25, "Bob"),
+    Person(30, "Ana"),
+]
+
+print(sorted(people))
+```
+
+What to notice:
+- Python compares `Person(age, name)` in that exact field order.
+- So it sorts by `age` first, then by `name` when ages tie.
+- If you defined `name` before `age`, the natural ordering would change accordingly.
+
 Example 11: `namedtuple` as a dict key
 
 ```python
@@ -2486,6 +2548,7 @@ What to notice:
 
 #### Common Patterns
 - Use `namedtuple` for small immutable records with tuple-like behavior.
+- Use `namedtuple(..., defaults=[...])` when only trailing fields should be optional.
 - Use `dataclass` for readable models, configs, DTOs, and structured domain objects.
 - Use `field(default_factory=...)` for mutable dataclass fields.
 - Use `frozen=True` when a dataclass should act like a value object.
@@ -2494,6 +2557,7 @@ What to notice:
 
 #### Pitfalls to Avoid
 - Using raw tuples when field names would make the code clearer.
+- Assuming `namedtuple` defaults work like arbitrary keyword defaults on a normal class.
 - Using a mutable dataclass default like `items=[]` instead of `default_factory`.
 - Expecting `frozen=True` to deep-freeze nested mutable objects.
 - Using `namedtuple` when the model is clearly growing methods, validation, or richer behavior.
@@ -2502,11 +2566,13 @@ What to notice:
 
 #### Quick Recap
 - `namedtuple` is tuple-like, lightweight, and immutable at the field-binding level.
+- `namedtuple` can have defaults, but only for the trailing fields.
 - `dataclass` is class-like, readable, and flexible.
 - Use `namedtuple` for compact immutable records.
 - Use dataclasses when the model is evolving or needs defaults, methods, or post-init logic.
 - A dataclass is still a normal class, but it generates common data-model methods for you.
 - With default settings, the main generated methods are `__init__`, `__repr__`, and `__eq__`.
+- With `order=True`, comparisons use field-definition order from left to right.
 - `field(default_factory=...)` is the correct fix for mutable dataclass defaults.
 - The right choice is mostly about ergonomics and future evolution, not raw Big-O.
 
@@ -2527,6 +2593,8 @@ I use `namedtuple` when I want a compact immutable record with tuple behavior, a
 8. What is the practical difference between `_replace()` and mutating a dataclass field?
 9. What is the difference between a normal class and a dataclass?
 10. Which methods does a dataclass usually generate by default?
+11. If a dataclass has fields `age` then `name` and uses `order=True`, what order does sorting use?
+12. Can `namedtuple` have default values, and if so, which fields can use them?
 
 #### Practice Answers
 1. They both solve the problem of representing related values with clear named fields instead of anonymous tuples or loosely structured dictionaries.
@@ -2539,6 +2607,8 @@ I use `namedtuple` when I want a compact immutable record with tuple behavior, a
 8. `_replace()` creates a new `namedtuple` instance with changed values, while a normal mutable dataclass field can usually be updated directly on the existing instance.
 9. A normal class requires you to write common methods like initialization, representation, and equality yourself, while a dataclass is still a normal class but can generate those data-model methods automatically from field declarations.
 10. With default settings, a dataclass usually generates `__init__`, `__repr__`, and `__eq__`; ordering methods require `order=True`, and hash behavior depends on options like `frozen` and `eq`.
+11. It sorts by `age` first and then by `name` for ties, because `order=True` compares instances using field-definition order.
+12. Yes. `namedtuple` can have default values, but only for the rightmost trailing fields, using the `defaults=` argument when the namedtuple type is created.
 
 ---
 
@@ -2560,6 +2630,8 @@ Use this section whenever you ask a question during Module 3.
 | 2 | 2026-06-01 | Topic 14: Unpacking | Is it correct to think `*` or `**` on the left packs and on the right unpacks? Why does `[*nums1, *nums2]` produce `[1, 2, 3, 4]` instead of `[[1, 2], [3, 4]]`? | Better rule: starred targets on the left usually collect remaining values, while starred expressions on the right usually expand values into the surrounding call or literal. `[nums1, nums2]` nests two list objects, but `[*nums1, *nums2]` expands both lists element by element into one outer list. | Remember: left starred target collects, right starred expression expands. |
 | 3 | 2026-06-02 | Topic 15: collections.Counter | If `Counter` only accepts hashable items, how can `Counter(votes)` work when `votes` is a list? Why do we need `update()` and `subtract()` when `+` and `-` already exist? | The outer container passed to `Counter(...)` only needs to be iterable; the individual counted elements must be hashable. Here the list contains strings, and strings are hashable. Also, `update()` and `subtract()` mutate an existing counter, while `+` and `-` create new counters; `subtract()` preserves zero and negative counts, but `-` drops them. | Remember: iterable container can be unhashable, counted elements cannot. In-place methods and operators also have different semantics. |
 | 4 | 2026-06-09 | Topic 18: collections.namedtuple & dataclasses | What is the difference between a normal class and a dataclass? What advantage does a dataclass provide, and which methods does it generate by default? | A dataclass is still a normal class, but it auto-generates common data-model methods from field declarations. Its main advantage is removing boilerplate while keeping the structure readable. With default settings, it usually generates `__init__`, `__repr__`, and `__eq__`; ordering requires `order=True`, and hash behavior depends on options like `frozen` and `eq`. | Remember: dataclass is a boilerplate-reduction tool for data-holding classes, not a different kind of class. |
+| 5 | 2026-06-09 | Topic 18: collections.namedtuple & dataclasses | If a dataclass uses `order=True`, what field order does sorting follow for something like `age: int` and `name: str`? | With `order=True`, dataclass compares instances as if comparing tuples of their fields in the order the fields are defined in the class. So `age` then `name` means sort by age first and name second for ties. | Remember: `order=True` follows field-definition order, not type or variable name importance. |
+| 6 | 2026-06-09 | Topic 18: collections.namedtuple & dataclasses | Can we provide default values to `namedtuple` input args like we do for dataclass fields? | Yes, `namedtuple` supports defaults through the `defaults=` argument, but only for the trailing rightmost fields. It is not as flexible as a dataclass for evolving models or richer initialization behavior. | Remember: `namedtuple` defaults are trailing defaults only. |
 
 ---
 
