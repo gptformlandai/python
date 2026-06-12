@@ -87,6 +87,9 @@
 
 ## Module 4 — Mastery Exercises (~7 hrs 30 min)
 
+- **Coding guide:** [Module-4-Mastery-Exercises.md](Module-4-Mastery-Exercises.md)
+- **Runnable practice file:** [module_4_practice.py](module_4_practice.py)
+
 | # | Problem | Structures Used | Time |
 |---|---------|----------------|------|
 | 1 | Frequency counter | dict + Counter | 30 min |
@@ -201,6 +204,6 @@
 |--------|--------|
 | Module 1 — Theory & Memory Internals | In Progress |
 | Module 2 — Access, Mutation & Time Complexity | Complete |
-| Module 3 — Power Idioms & Collections | In Progress |
-| Module 4 — Mastery Exercises | Not Started |
+| Module 3 — Power Idioms & Collections | Complete |
+| Module 4 — Mastery Exercises | In Progress |
 | Module 5 — Mini Project | Not Started |
